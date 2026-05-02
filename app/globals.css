@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Beacon design tokens ────────────────────────────────────────────────── */
+@theme {
+  --color-beacon-bg:      #0a0a0a;
+  --color-beacon-surface: #111111;
+  --color-beacon-border:  #262626;
+  --color-beacon-accent:  #f97316;
+  --color-beacon-text:    #e5e5e5;
+  --color-beacon-muted:   #737373;
+  --font-mono: var(--font-mono);
+  --font-sans: var(--font-sans);
+}
+
+/* ─── shadcn CSS vars overridden for Beacon dark terminal palette ─────────── */
+@theme inline {
+  --color-background:         #0a0a0a;
+  --color-foreground:         #e5e5e5;
+  --color-card:               #111111;
+  --color-card-foreground:    #e5e5e5;
+  --color-popover:            #111111;
+  --color-popover-foreground: #e5e5e5;
+  --color-primary:            #f97316;
+  --color-primary-foreground: #0a0a0a;
+  --color-secondary:          #1a1a1a;
+  --color-secondary-foreground: #e5e5e5;
+  --color-muted:              #1a1a1a;
+  --color-muted-foreground:   #737373;
+  --color-accent:             #1a1a1a;
+  --color-accent-foreground:  #e5e5e5;
+  --color-destructive:        #ef4444;
+  --color-border:             #262626;
+  --color-input:              #1a1a1a;
+  --color-ring:               #f97316;
+  --radius-sm:  0px;
+  --radius-md:  0px;
+  --radius-lg:  0px;
+  --radius-xl:  0px;
+  --radius-2xl: 0px;
+}
+
+/* ─── Base styles ─────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    background-color: #0a0a0a;
+    color: #e5e5e5;
+  }
+  /* Force all borders sharp — no rounded corners anywhere in Beacon */
+  *, *::before, *::after {
+    border-radius: 0 !important;
+  }
+}
+
+/* ─── Beacon-specific utilities ───────────────────────────────────────────── */
+@layer utilities {
+  .beacon-surface {
+    background-color: #111111;
+    border: 1px solid #262626;
+  }
+  .beacon-accent {
+    color: #f97316;
+  }
+  .beacon-muted {
+    color: #737373;
+  }
+  .font-mono {
+    font-family: var(--font-mono), 'Courier New', monospace;
+  }
+  /* Orange pulse for running state */
+  .pulse-orange {
+    animation: pulse-orange 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  @keyframes pulse-orange {
+    0%, 100% { background-color: #f97316; opacity: 1; }
+    50%       { background-color: #f97316; opacity: 0.4; }
+  }
+}
