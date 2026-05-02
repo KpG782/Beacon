@@ -1,10 +1,4 @@
-import { Redis } from '@upstash/redis'
 import type { AgentMemory } from './types'
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
 
 const MEMORY_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 
@@ -17,10 +11,25 @@ function memoryKey(topic: string): string {
   return `beacon:memory:${slug}`
 }
 
+// [Harness] Thin wrapper over Upstash REST pipeline — no SDK, no EventTarget dependency
+async function upstash(commands: (string | number)[][]): Promise<unknown[]> {
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return commands.map(() => null)
+  const res = await fetch(`${url}/pipeline`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(commands),
+  })
+  if (!res.ok) throw new Error(`Upstash HTTP ${res.status}`)
+  const data = (await res.json()) as Array<{ result: unknown; error?: string }>
+  return data.map(d => d.result)
+}
+
 // [Memory] Load what the agent already knows — null = first run
 export async function loadMemory(topic: string): Promise<AgentMemory | null> {
   try {
-    const raw = await redis.get(memoryKey(topic))
+    const [raw] = await upstash([['GET', memoryKey(topic)]])
     if (!raw) return null
     return typeof raw === 'string' ? JSON.parse(raw) : (raw as AgentMemory)
   } catch {
@@ -32,9 +41,7 @@ export async function loadMemory(topic: string): Promise<AgentMemory | null> {
 // [Memory] Save what the agent learned — never throws
 export async function saveMemory(memory: AgentMemory): Promise<void> {
   try {
-    await redis.set(memoryKey(memory.topic), JSON.stringify(memory), {
-      ex: MEMORY_TTL_SECONDS,
-    })
+    await upstash([['SET', memoryKey(memory.topic), JSON.stringify(memory), 'EX', MEMORY_TTL_SECONDS]])
   } catch {
     // [Harness] Log but don't throw — memory save failure should not kill the workflow
     console.error('[beacon:memory] Failed to save memory for:', memory.topic)

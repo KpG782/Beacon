@@ -15,7 +15,7 @@ Context Engineering   │  Phase 2 — SerpAPI tool  │  30 min   │  DONE ✅
 Memory Engineering    │  Phase 2.5 — lib/memory  │  45 min   │  DONE ✅
 Context + Memory      │  Phase 3 — Workflow engine│  2–3 hrs  │  DONE ✅
 Context               │  Phase 4 — Chat SDK       │  1–2 hrs  │  DONE ✅
-Context + Memory      │  Phase 5 — v0 Dashboard   │  1–2 hrs  │  PENDING (page shells exist)
+Context + Memory      │  Phase 5 — v0 Dashboard   │  1–2 hrs  │  DONE ✅
 Context               │  Phase 6 — MCP server     │  30 min   │  DONE ✅
 Harness               │  Phase 7 — Deploy + demo  │  1 hr     │  PENDING (fill .env.local → vercel)
 Harness               │  Phase 3* — Logging + eval│  post-MVP │  FUTURE
