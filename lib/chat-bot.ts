@@ -3,21 +3,35 @@ import { createSlackAdapter } from '@chat-adapter/slack'
 import { createRedisState } from '@chat-adapter/state-redis'
 import { loadMemory } from '@/lib/memory'
 
-// [Context] [Harness] Singleton Slack adapter — shared by bot and webhook route
-// SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET are read from env vars automatically
-export const slackAdapter = createSlackAdapter()
-
 let _bot: Chat<{ slack: ReturnType<typeof createSlackAdapter> }> | null = null
+let _slackAdapter: ReturnType<typeof createSlackAdapter> | null = null
+
+function requireSlackEnv() {
+  const missing: string[] = []
+  if (!process.env.SLACK_BOT_TOKEN) missing.push('SLACK_BOT_TOKEN')
+  if (!process.env.SLACK_SIGNING_SECRET) missing.push('SLACK_SIGNING_SECRET')
+  if (!process.env.UPSTASH_REDIS_URL) missing.push('UPSTASH_REDIS_URL')
+  if (missing.length > 0) {
+    throw new Error(`Missing required Slack env vars: ${missing.join(', ')}`)
+  }
+}
+
+// [Context] [Harness] Singleton Slack adapter — shared by bot and webhook route
+export function getSlackAdapter() {
+  if (_slackAdapter) return _slackAdapter
+  requireSlackEnv()
+  _slackAdapter = createSlackAdapter()
+  return _slackAdapter
+}
 
 // [Harness] Lazy singleton — initialized on first request so env vars are available
 function getBot() {
   if (_bot) return _bot
+  const slackAdapter = getSlackAdapter()
 
   // [Memory] Requires UPSTASH_REDIS_URL (standard redis:// protocol, not REST)
   // Get from: Upstash dashboard → Database → Connect → ioredis
-  const state = createRedisState({
-    url: process.env.UPSTASH_REDIS_URL,
-  })
+  const state = createRedisState({ url: process.env.UPSTASH_REDIS_URL })
 
   _bot = new Chat({
     userName: 'beacon',

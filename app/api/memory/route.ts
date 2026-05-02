@@ -2,12 +2,16 @@ import { Redis } from '@upstash/redis'
 import '@/lib/polyfills'
 import { NextResponse } from 'next/server'
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+function getRedis(): Redis | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return null
+  return new Redis({ url, token })
+}
 
 export async function GET() {
+  const redis = getRedis()
+  if (!redis) return NextResponse.json([])
   try {
     const keys: string[] = []
     let cursor = 0
@@ -39,6 +43,8 @@ export async function GET() {
 }
 
 export async function DELETE(req: Request) {
+  const redis = getRedis()
+  if (!redis) return NextResponse.json({ ok: false, error: 'Upstash Redis is not configured' }, { status: 500 })
   try {
     const { key } = await req.json()
     if (!key?.startsWith('beacon:memory:')) return NextResponse.json({ ok: false }, { status: 400 })

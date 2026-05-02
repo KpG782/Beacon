@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import ArchitectureScene from '@/components/landing/architecture-scene'
+import { FRAMEWORKS } from '@/lib/frameworks'
 
 const SIGNALS = [
   {
@@ -64,6 +65,18 @@ const DEMOS = [
   ['Surface', 'MCP + CLI + UI', 'Same state reused across every entrypoint.'],
 ]
 
+const FRAMEWORK_COUNT = FRAMEWORKS.length
+const FRAMEWORK_PREVIEW = FRAMEWORKS.filter((framework) =>
+  [
+    'jobs-to-be-done',
+    'rice-scoring',
+    'causal-loop',
+    'porters-five-forces',
+    'ab-testing',
+    'red-team',
+  ].includes(framework.id)
+)
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#0b0d10] text-[#e5e2e3] overflow-hidden">
@@ -120,7 +133,7 @@ export default function LandingPage() {
                 </h1>
                 <p className="mt-6 max-w-2xl text-[17px] leading-8 text-[#9db0b3]"
                    style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                  Beacon turns source links into a second-brain memory mesh, then uses that memory to track what changed on the next run.
+                  Beacon turns source links into a second-brain memory mesh and gives teams a clear thinking path, so decisions feel faster, calmer, and more confident.
                 </p>
               </div>
 
@@ -204,6 +217,45 @@ export default function LandingPage() {
                   </p>
                 </div>
               ))}
+            </div>
+
+            <div className="border border-cyan-400/18 bg-cyan-400/[0.04] p-6 md:p-7">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2 border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-cyan-300"
+                       style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    <span className="w-1.5 h-1.5 bg-cyan-300 animate-pulse" />
+                    Core capability
+                  </div>
+                  <h2 className="mt-3 text-2xl tracking-[-0.03em] text-[#f3f7f8]">
+                    {FRAMEWORK_COUNT} preselected research frameworks
+                  </h2>
+                  <p className="mt-2 text-[13px] leading-7 text-[#98abaf]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    From discovery to strategy to deep analysis, each framework gives people a better starting point so they spend less time guessing and more time making moves that matter.
+                  </p>
+                </div>
+                <Link
+                  href="/briefs/new"
+                  className="border border-cyan-400/35 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-cyan-200 hover:bg-cyan-400/10 transition-colors"
+                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                >
+                  Explore All Frameworks
+                </Link>
+              </div>
+              <div className="mt-5 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {FRAMEWORK_PREVIEW.map((framework) => (
+                  <div key={framework.id} className="border border-white/10 bg-black/30 p-4">
+                    <div className="inline-flex items-center border border-cyan-400/30 px-2 py-1 text-[9px] uppercase tracking-[0.2em] text-cyan-300"
+                         style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      {framework.category}
+                    </div>
+                    <div className="mt-3 text-[16px] leading-5 text-[#edf3f4]">{framework.name}</div>
+                    <p className="mt-2 text-[12px] leading-6 text-[#90a3a7]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      {framework.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
