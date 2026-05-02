@@ -1,6 +1,6 @@
 # 🔦 Beacon
 
-> **Autonomous web research agent with persistent memory** — runs deep SerpAPI investigations while you're offline, remembers what it learned, delivers delta reports showing exactly what changed, and delivers to Slack, GitHub PRs, and a live dashboard.
+> **Autonomous web research agent with persistent memory** — runs deep SerpAPI investigations while you're offline, remembers what it learned, supports **47 preselected research frameworks**, delivers delta reports showing exactly what changed, and ships results to Slack, GitHub PRs, and a live dashboard.
 
 Built for the [Vercel Zero to Agent Hackathon](https://community.vercel.com/hackathons/zero-to-agent) · April 24 – May 4, 2026
 
@@ -21,12 +21,13 @@ Knowledge workers spend **4–8 hours/week** on manual web research. AI agents e
 Beacon is a **durable research agent with persistent cross-session memory** that:
 
 1. Accepts a research brief from **Slack, GitHub, Discord, or the dashboard**
-2. **Loads memory** — checks what it already knows about this topic from previous runs
-3. Fans out **SerpAPI queries** focused only on finding NEW information
-4. Synthesizes a **delta report** — "here's what changed since last week"
-5. **Saves what it learned** back to memory — compounds over time
-6. Delivers to **Slack thread**, **GitHub PR comment**, or **live dashboard**
-7. **Sleeps and reruns weekly** — gets smarter every run, never resets
+2. Applies one of **47 preselected research frameworks** (discovery, prioritization, systems, strategy, validation, AI/deep research)
+3. **Loads memory** — checks what it already knows about this topic from previous runs
+4. Fans out **SerpAPI queries** focused only on finding NEW information
+5. Synthesizes a **delta report** — "here's what changed since last week"
+6. **Saves what it learned** back to memory — compounds over time
+7. Delivers to **Slack thread**, **GitHub PR comment**, or **live dashboard**
+8. **Sleeps and reruns weekly** — gets smarter every run, never resets
 
 ---
 
@@ -42,6 +43,7 @@ Beacon is a **durable research agent with persistent cross-session memory** that
 | Survives browser close | ❌ | ✅ Durable workflow |
 | Live progress dashboard | ❌ | ✅ v0-generated |
 | Visible agent memory | ❌ | ✅ Dashboard memory panel |
+| Research framework library | ❌ Generic | ✅ 47 preselected frameworks |
 
 ---
 
@@ -99,11 +101,14 @@ beacon/
 ├── AGENTS.md
 ├── app/
 │   ├── layout.tsx
-│   ├── page.tsx                      # Dashboard home (v0-generated)
+│   ├── page.tsx                      # Landing page
 │   ├── briefs/
-│   │   ├── page.tsx                  # All briefs list
+│   │   ├── new/page.tsx              # New brief + framework picker
 │   │   └── [id]/
-│   │       └── page.tsx              # Live brief + memory panel (v0-generated)
+│   │       └── page.tsx              # Live brief + report
+│   ├── dashboard/page.tsx            # Dashboard
+│   ├── memory/page.tsx               # Memory explorer
+│   ├── logs/page.tsx                 # Logs
 │   └── api/
 │       ├── briefs/
 │       │   ├── route.ts              # POST → start / GET → list
@@ -113,9 +118,7 @@ beacon/
 │       │   └── research/
 │       │       └── route.ts          # WDK workflow endpoint
 │       ├── webhooks/
-│       │   ├── slack/route.ts
-│       │   ├── github/route.ts
-│       │   └── discord/route.ts
+│       │   └── slack/route.ts
 │       └── mcp/
 │           └── [...transport]/
 │               └── route.ts          # Beacon-as-MCP-server
@@ -127,12 +130,11 @@ beacon/
 │   ├── memory.ts                     # ← Persistent agent memory layer
 │   ├── chat-bot.ts                   # Chat SDK bot
 │   └── types.ts                      # Shared types
-├── components/                       # ALL from v0
-│   ├── BriefsList.tsx
-│   ├── BriefCard.tsx
-│   ├── ResearchProgress.tsx
-│   ├── ReportView.tsx
-│   └── MemoryPanel.tsx               # ← Shows agent memory state
+├── components/
+│   ├── layout/*                      # Shell components
+│   ├── graph/*                       # Graph view
+│   ├── landing/*                     # Landing visuals
+│   └── ui/*                          # Shared UI primitives
 ├── proxy.ts
 ├── next.config.ts
 ├── tailwind.config.ts
@@ -195,13 +197,20 @@ GITHUB_WEBHOOK_SECRET=...
 DISCORD_TOKEN=...
 DISCORD_PUBLIC_KEY=...
 
-# Upstash Redis — memory store + Chat SDK state (free at upstash.com)
+# Upstash Redis (ioredis URL) — required for Chat SDK state
+UPSTASH_REDIS_URL=rediss://default:...@....upstash.io:6379
+
+# Upstash Redis REST — required for memory + brief persistence
 UPSTASH_REDIS_REST_URL=https://...upstash.io
 UPSTASH_REDIS_REST_TOKEN=...
 
 # Local dev
 VERCEL_URL=http://localhost:3000
 ```
+
+**Notes**
+- `UPSTASH_REDIS_URL` and `UPSTASH_REDIS_REST_*` are different and both are required for full functionality.
+- Slack webhook route requires `SLACK_BOT_TOKEN` + `SLACK_SIGNING_SECRET`.
 
 ---
 
@@ -212,7 +221,7 @@ git clone https://github.com/yourusername/beacon
 cd beacon
 npm install
 cp .env.local.example .env.local
-# Fill in keys
+# Fill in all required keys in .env.local
 
 # Terminal 1
 npm run dev
@@ -230,6 +239,32 @@ open http://localhost:3001
 ```
 
 ---
+
+## Deployment Setup (Vercel)
+
+Set these in **Project Settings → Environment Variables**:
+
+1. `GROQ_API_KEY`
+2. `SERPAPI_API_KEY`
+3. `UPSTASH_REDIS_URL`
+4. `UPSTASH_REDIS_REST_URL`
+5. `UPSTASH_REDIS_REST_TOKEN`
+6. `SLACK_BOT_TOKEN` (if using Slack)
+7. `SLACK_SIGNING_SECRET` (if using Slack)
+8. `VERCEL_URL` (your production URL, e.g. `https://your-app.vercel.app`)
+
+---
+
+## Troubleshooting
+
+- **`[Upstash Redis] The 'url' or 'token' property is missing`**
+  - Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+
+- **`signingSecret or webhookVerifier is required` (Slack route)**
+  - Set both `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET`.
+
+- **`Using edge runtime ... disables static generation`**
+  - Informational warning from Next.js when an edge runtime route exists.
 
 ## Demo Script (3 min)
 

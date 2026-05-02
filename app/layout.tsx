@@ -1,45 +1,58 @@
 import type { Metadata } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
 import { cn } from '@/lib/utils'
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site'
 import { LayoutShell } from '@/components/layout/layout-shell'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space-grotesk' })
 
-const APP_URL = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : 'http://localhost:3000'
-
 export const metadata: Metadata = {
   title: {
-    default: 'Beacon — Autonomous Research Agent',
-    template: '%s · Beacon',
+    default: `${SITE_NAME} — Autonomous Research Agent`,
+    template: `%s · ${SITE_NAME}`,
   },
-  description:
-    'Durable web research agent with persistent cross-session memory. Fans out SerpAPI queries, synthesizes delta reports showing only what changed, and delivers to Slack, GitHub, and Discord.',
-  metadataBase: new URL(APP_URL),
+  description: SITE_DESCRIPTION,
+  metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Beacon — Autonomous Research Agent',
-    description:
-      'Durable web research agent with persistent cross-session memory. Delta reports. Slack + GitHub delivery. Never restarts from zero.',
-    url: APP_URL,
-    siteName: 'Beacon',
+    title: `${SITE_NAME} — Autonomous Research Agent`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
     type: 'website',
     locale: 'en_US',
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'Beacon — Autonomous research agent with persistent memory',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Beacon — Autonomous Research Agent',
-    description:
-      'Durable web research agent with persistent cross-session memory. Delta reports. Slack + GitHub delivery.',
+    title: `${SITE_NAME} — Autonomous Research Agent`,
+    description: SITE_DESCRIPTION,
+    images: ['/opengraph-image'],
   },
   keywords: [
     'research agent', 'AI agent', 'web research', 'persistent memory',
     'delta reports', 'Slack bot', 'GitHub', 'Vercel', 'durable workflow',
   ],
   authors: [{ name: 'KpG782', url: 'https://github.com/KpG782' }],
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,0 +1,21 @@
+# Beacon
+
+Beacon is a durable web research agent with persistent cross-session memory.
+
+Official URL: https://beacon-mu-murex.vercel.app/
+Sitemap: https://beacon-mu-murex.vercel.app/sitemap.xml
+Robots: https://beacon-mu-murex.vercel.app/robots.txt
+
+## Product summary
+- Runs recurring web research workflows.
+- Uses memory to track what is new across runs.
+- Delivers delta reports to Slack, GitHub, Discord, and the web dashboard.
+
+## Public pages
+- https://beacon-mu-murex.vercel.app/
+- https://beacon-mu-murex.vercel.app/dashboard
+- https://beacon-mu-murex.vercel.app/docs
+- https://beacon-mu-murex.vercel.app/graph
+- https://beacon-mu-murex.vercel.app/logs
+- https://beacon-mu-murex.vercel.app/memory
+- https://beacon-mu-murex.vercel.app/support

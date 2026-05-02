@@ -1,7 +1,27 @@
 {
   "name": "beacon",
   "version": "0.1.0",
+  "description": "Durable web research agent with persistent cross-session memory and delta reports.",
   "private": true,
+  "homepage": "https://beacon-mu-murex.vercel.app/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KpG782/Beacon.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KpG782/Beacon/issues"
+  },
+  "keywords": [
+    "ai-agent",
+    "research-agent",
+    "web-research",
+    "persistent-memory",
+    "workflow",
+    "nextjs",
+    "serpapi",
+    "groq"
+  ],
+  "author": "KpG782",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
