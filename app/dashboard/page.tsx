@@ -140,8 +140,8 @@ export default function Dashboard() {
     .slice(0, 10)
 
   return (
-    <div className="px-8 py-8">
-      <div className="flex justify-between items-end mb-8">
+    <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8">
         <div>
           <h2 className="text-2xl font-semibold text-[#e5e2e3] mb-1">Command Overview</h2>
           <p className="text-[13px] text-[#849495]"
@@ -159,7 +159,7 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-5">
         {[
           { icon: 'auto_awesome_motion', iconColor: 'text-cyan-400', label: 'Active Briefs', value: loading ? '—' : `${active}`, sub: `/${briefs.length}` },
           { icon: 'memory', iconColor: 'text-[#65f2b5]', label: 'Total Memory Points', value: loading ? '—' : fmt(memPts), sub: '' },

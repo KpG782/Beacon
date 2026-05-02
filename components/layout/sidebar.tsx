@@ -6,34 +6,53 @@ import { cn } from '@/lib/utils'
 import { useSidebar, SIDEBAR_OPEN_W, SIDEBAR_CLOSE_W } from './layout-shell'
 
 const NAV = [
-  { href: '/',           icon: 'home',             label: 'Landing' },
-  { href: '/dashboard',  icon: 'dashboard',        label: 'Dashboard' },
-  { href: '/briefs/new', icon: 'add_circle',        label: 'New Research' },
-  { href: '/memory',     icon: 'database',          label: 'Memory Bank' },
-  { href: '/logs',       icon: 'terminal',          label: 'System Logs' },
+  { href: '/',           icon: 'home',       label: 'Landing' },
+  { href: '/dashboard',  icon: 'dashboard',  label: 'Dashboard' },
+  { href: '/briefs/new', icon: 'add_circle', label: 'New Research' },
+  { href: '/graph',      icon: 'hub',        label: 'Research Graph' },
+  { href: '/memory',     icon: 'database',   label: 'Memory Bank' },
+  { href: '/logs',       icon: 'terminal',   label: 'System Logs' },
 ]
 
 const FOOTER_NAV = [
-  { href: 'https://github.com/KpG782/Beacon#readme', icon: 'menu_book',       label: 'Docs',    external: true },
-  { href: 'https://github.com/KpG782/Beacon/issues', icon: 'contact_support', label: 'Support', external: true },
+  { href: '/docs',    icon: 'menu_book',       label: 'Docs' },
+  { href: '/support', icon: 'contact_support', label: 'Support' },
 ]
 
 export default function Sidebar() {
-  const pathname  = usePathname()
-  const { open, toggle } = useSidebar()
+  const pathname = usePathname()
+  const { open, isMobile, toggle } = useSidebar()
+
+  // On mobile: full-width when open, hidden (0px) when closed.
+  // On desktop: 260px open / 64px closed.
+  const sidebarWidth = isMobile
+    ? (open ? SIDEBAR_OPEN_W : 0)
+    : (open ? SIDEBAR_OPEN_W : SIDEBAR_CLOSE_W)
+
+  function handleNavClick() {
+    if (isMobile && open) toggle()
+  }
 
   return (
     <nav
       className="fixed left-0 top-0 h-full border-r border-white/5 bg-[#050505] flex flex-col py-6 z-40 overflow-hidden"
       style={{
-        width: open ? SIDEBAR_OPEN_W : SIDEBAR_CLOSE_W,
+        width: sidebarWidth,
         transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)',
       }}
+      aria-label="Primary navigation"
     >
       {/* Brand + toggle */}
-      <div className="flex items-center justify-between mb-8" style={{ paddingLeft: open ? 24 : 0, paddingRight: open ? 8 : 0, justifyContent: open ? 'space-between' : 'center' }}>
-        {open && (
-          <Link href="/" className="flex items-center gap-3">
+      <div
+        className="flex items-center mb-8"
+        style={{
+          paddingLeft:    open ? 24 : 0,
+          paddingRight:   open ? 8 : 0,
+          justifyContent: open ? 'space-between' : 'center',
+        }}
+      >
+        {open ? (
+          <Link href="/" onClick={handleNavClick} className="flex items-center gap-3">
             <div className="w-8 h-8 shrink-0 rounded-lg bg-cyan-400/20 flex items-center justify-center border border-cyan-400/30">
               <span className="material-symbols-outlined text-cyan-400 text-[18px]">adjust</span>
             </div>
@@ -44,22 +63,20 @@ export default function Sidebar() {
                  style={{ fontFamily: 'var(--font-space-grotesk)' }}>AI AGENT v1.0</p>
             </div>
           </Link>
-        )}
-        {!open && (
+        ) : (
           <Link href="/" className="w-8 h-8 shrink-0 rounded-lg bg-cyan-400/20 flex items-center justify-center border border-cyan-400/30">
             <span className="material-symbols-outlined text-cyan-400 text-[18px]">adjust</span>
           </Link>
         )}
-        <button
-          onClick={toggle}
-          className={cn(
-            'w-8 h-8 flex items-center justify-center rounded-lg text-[#849495] hover:text-cyan-400 hover:bg-white/5 transition-colors shrink-0',
-            !open && 'hidden'
-          )}
-          aria-label="Collapse sidebar"
-        >
-          <span className="material-symbols-outlined text-[18px]">menu_open</span>
-        </button>
+        {open && (
+          <button
+            onClick={toggle}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#849495] hover:text-cyan-400 hover:bg-white/5 transition-colors shrink-0 cursor-pointer"
+            aria-label="Collapse sidebar"
+          >
+            <span className="material-symbols-outlined text-[18px]">menu_open</span>
+          </button>
+        )}
       </div>
 
       {/* New Brief CTA */}
@@ -67,6 +84,7 @@ export default function Sidebar() {
         {open ? (
           <Link
             href="/briefs/new"
+            onClick={handleNavClick}
             className="w-full btn-ghost-cyan rounded-lg py-2.5 px-4 flex items-center justify-center gap-2 text-[11px] font-bold tracking-widest uppercase min-h-[44px]"
             style={{ fontFamily: 'var(--font-space-grotesk)' }}
           >
@@ -94,9 +112,10 @@ export default function Sidebar() {
             <Link
               key={item.label}
               href={item.href}
+              onClick={handleNavClick}
               title={!open ? item.label : undefined}
               className={cn(
-                'flex items-center gap-3 py-3 text-[14px] transition-all duration-150 min-h-[44px]',
+                'flex items-center gap-3 py-3 text-[14px] transition-all duration-150 min-h-[44px] cursor-pointer',
                 open ? 'px-4' : 'px-0 justify-center',
                 isActive
                   ? 'bg-cyan-400/10 text-cyan-400 border-r-2 border-cyan-400 font-semibold'
@@ -116,11 +135,10 @@ export default function Sidebar() {
           <Link
             key={item.label}
             href={item.href}
-            target={item.external ? '_blank' : undefined}
-            rel={item.external ? 'noopener noreferrer' : undefined}
+            onClick={handleNavClick}
             title={!open ? item.label : undefined}
             className={cn(
-              'flex items-center gap-3 py-2.5 text-[14px] text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-all min-h-[44px]',
+              'flex items-center gap-3 py-2.5 text-[14px] text-slate-600 hover:text-slate-300 hover:bg-white/5 transition-all min-h-[44px] cursor-pointer',
               open ? 'px-4' : 'px-0 justify-center'
             )}
           >
@@ -130,7 +148,7 @@ export default function Sidebar() {
         ))}
       </div>
 
-      {/* User + expand toggle when closed */}
+      {/* User + expand toggle when collapsed */}
       <div
         className={cn(
           'pt-4 mt-2 border-t border-white/5 flex items-center gap-3',
@@ -148,7 +166,7 @@ export default function Sidebar() {
         {!open && (
           <button
             onClick={toggle}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#849495] hover:text-cyan-400 hover:bg-white/5 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#849495] hover:text-cyan-400 hover:bg-white/5 transition-colors cursor-pointer"
             aria-label="Expand sidebar"
           >
             <span className="material-symbols-outlined text-[18px]">menu</span>

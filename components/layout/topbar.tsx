@@ -37,7 +37,7 @@ const LOG_MSG_COLOR: Record<string, string> = {
 function PanelShell({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div
-      className="absolute right-0 top-12 w-80 glass-card rounded-xl overflow-hidden shadow-2xl z-50"
+      className="absolute right-0 top-12 w-80 max-w-[calc(100vw-24px)] glass-card rounded-xl overflow-hidden shadow-2xl z-50"
       style={{ border: '1px solid rgba(255,255,255,0.12)' }}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
@@ -122,13 +122,14 @@ export default function TopBar() {
     if (p === 'notif') { setUnread(0); lastLogCount.current = logs.length }
   }, [logs.length])
 
-  const connected   = Object.values(status).filter(s => s.ok).length
+  const connected     = Object.values(status).filter(s => s.ok).length
   const totalServices = Object.values(status).length
-  const leftOffset  = open ? SIDEBAR_OPEN_W : SIDEBAR_CLOSE_W
+  const { isMobile }  = useSidebar()
+  const leftOffset    = isMobile ? 0 : (open ? SIDEBAR_OPEN_W : SIDEBAR_CLOSE_W)
 
   return (
     <header
-      className="fixed top-0 z-50 border-b border-white/10 bg-[#050505]/80 backdrop-blur-xl flex items-center justify-between px-6 h-16"
+      className="fixed top-0 z-50 border-b border-white/10 bg-[#050505]/80 backdrop-blur-xl flex items-center justify-between px-3 sm:px-6 h-16"
       style={{ left: leftOffset, right: 0, transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1)' }}
     >
       {/* Left */}
@@ -154,7 +155,7 @@ export default function TopBar() {
           />
           Services: {connected}/{totalServices || '—'} Online
         </div>
-        <div className="text-slate-600 text-xs uppercase tracking-widest hidden md:block"
+        <div className="text-slate-600 text-xs uppercase tracking-widest hidden lg:block"
              style={{ fontFamily: 'var(--font-space-grotesk)' }}>
           Active Briefs: {activeBriefs}
         </div>
@@ -176,10 +177,10 @@ export default function TopBar() {
 
           {panel === 'settings' && (
             <PanelShell title="Settings" action={
-              <Link href="https://github.com/KpG782/Beacon" target="_blank"
+              <Link href="/docs" onClick={() => setPanel(null)}
                     className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors"
                     style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                GitHub →
+                Open docs →
               </Link>
             }>
               <div className="p-4 flex flex-col gap-4">
@@ -205,14 +206,16 @@ export default function TopBar() {
                   <div className="text-[10px] font-bold tracking-widest uppercase text-[#3b494b] mb-1"
                        style={{ fontFamily: 'var(--font-space-grotesk)' }}>Quick Links</div>
                   {[
+                    { label: 'Research Graph', href: '/graph',      icon: 'hub' },
                     { label: 'System Logs',   href: '/logs',       icon: 'terminal' },
                     { label: 'Memory Bank',   href: '/memory',     icon: 'database' },
-                    { label: 'GitHub Issues', href: 'https://github.com/KpG782/Beacon/issues', icon: 'bug_report', external: true },
-                    { label: 'Deploy Docs',   href: 'https://vercel.com/docs',                 icon: 'rocket_launch', external: true },
+                    { label: 'Docs',          href: '/docs',       icon: 'menu_book' },
+                    { label: 'Support',       href: '/support',    icon: 'contact_support' },
+                    { label: 'MCP Guide',     href: '/docs#mcp',   icon: 'hub' },
+                    { label: 'SDK Guide',     href: '/docs#sdk',   icon: 'code_blocks' },
+                    { label: 'CLI Status',    href: '/docs#cli',   icon: 'terminal' },
                   ].map(l => (
                     <Link key={l.label} href={l.href}
-                          target={l.external ? '_blank' : undefined}
-                          rel={l.external ? 'noopener noreferrer' : undefined}
                           onClick={() => setPanel(null)}
                           className="flex items-center gap-2 text-[12px] text-[#849495] hover:text-cyan-400 py-1 transition-colors"
                           style={{ fontFamily: 'var(--font-space-grotesk)' }}>

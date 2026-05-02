@@ -14,6 +14,7 @@ import {
   filterSeenUrls,
   buildMemoryContext,
 } from '@/lib/memory'
+import { FRAMEWORKS_BY_ID } from '@/lib/frameworks'
 import type { ResearchBrief, ResearchReport, QueryPlan, AgentMemory } from '@/lib/types'
 
 export async function researchAgent(brief: ResearchBrief): Promise<ResearchReport> {
@@ -23,7 +24,7 @@ export async function researchAgent(brief: ResearchBrief): Promise<ResearchRepor
   const memory = await loadMemoryStep(brief.topic)
 
   // [Context + Memory] Step 2: Plan — expand topic into targeted queries
-  const plan = await planQueries(brief.topic, memory)
+  const plan = await planQueries(brief, memory)
 
   // [Context] Step 3: Search — fan out SerpAPI queries in parallel
   const rawResults = await Promise.all(
@@ -73,15 +74,17 @@ async function loadMemoryStep(topic: string): Promise<AgentMemory | null> {
 }
 
 async function planQueries(
-  topic: string,
+  brief: ResearchBrief,
   memory: AgentMemory | null
 ): Promise<QueryPlan> {
   'use step'
   // [Context] [Memory] — scoutModel generates targeted queries, skipping known ground
 
   const start = Date.now()
+  const topic = brief.topic
   const memoryContext = buildMemoryContext(memory)
   const isRerun = memory && memory.runCount > 0
+  const framework = brief.frameworkId ? FRAMEWORKS_BY_ID.get(brief.frameworkId) : null
 
   const { text } = await generateText({
     model: scoutModel,
@@ -93,7 +96,7 @@ ${
   isRerun
     ? `Since this is a rerun, focus on: recent news, new releases, price changes, announcements since ${new Date(memory!.lastRunAt).toLocaleDateString()}`
     : 'Since this is a fresh run, cover: overview, comparisons, recent news, use cases, pricing, community sentiment.'
-}
+}${framework ? `\n\n## Research Framework: ${framework.name}\n${framework.queryHint}` : ''}
 
 Return ONLY valid JSON, no markdown, no explanation:
 {
@@ -163,6 +166,7 @@ async function synthesizeReport(
   const context = compressSerpResults(serpResults)
   const runCount = (memory?.runCount ?? 0) + 1
   const isDelta = runCount > 1
+  const framework = brief.frameworkId ? FRAMEWORKS_BY_ID.get(brief.frameworkId) : null
 
   const { text, usage } = await generateText({
     model: synthModel,
@@ -188,7 +192,7 @@ ${isDelta ? '## What Changed Since Last Week\n[2-3 sentences on key changes]\n\n
 [1] Title — URL
 [2] Title — URL
 
-Rules: Always cite sources inline. Be specific. No fluff. Max 600 words.`,
+Rules: Always cite sources inline. Be specific. No fluff. Max 600 words.${framework ? `\n\n## Output Framework: ${framework.name}\n${framework.synthesisHint}` : ''}`,
     prompt: `Topic: ${brief.topic}
 Run #${runCount}
 ${memory ? `Previous summary: ${memory.reportSummary}` : ''}

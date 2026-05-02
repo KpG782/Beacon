@@ -205,6 +205,14 @@
     background-size: 42px 42px;
     mask-image: radial-gradient(circle at center, black 45%, transparent 100%);
   }
+  .neural-backdrop {
+    background-image:
+      radial-gradient(circle at 18% 24%, rgba(0,219,233,0.18), transparent 28%),
+      radial-gradient(circle at 78% 18%, rgba(101,242,181,0.14), transparent 24%),
+      radial-gradient(circle at 58% 72%, rgba(255,184,78,0.1), transparent 22%);
+    filter: blur(28px);
+    animation: neural-breathe 9s ease-in-out infinite;
+  }
   .landing-orbit {
     transform: rotateX(72deg) rotateZ(12deg);
     transform-style: preserve-3d;
@@ -242,5 +250,9 @@
   @keyframes pulse-cyan {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.3; }
+  }
+  @keyframes neural-breathe {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.72; }
+    50% { transform: translateY(12px) scale(1.04); opacity: 1; }
   }
 }

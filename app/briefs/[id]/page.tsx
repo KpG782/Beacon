@@ -79,7 +79,7 @@ export default function BriefDetail() {
   }, [id])
 
   return (
-    <div className="px-8 py-8 max-w-3xl">
+    <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-8 max-w-3xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-[#849495] text-[12px] mb-8"
            style={{ fontFamily: 'var(--font-space-grotesk)' }}>
@@ -132,7 +132,8 @@ export default function BriefDetail() {
         >
           Observed Lifecycle
         </p>
-        <div className="flex items-start">
+        {/* Pipeline — horizontal on sm+, 2×2 grid on xs */}
+        <div className="grid grid-cols-2 sm:flex gap-y-4 items-start">
           {LIFECYCLE.map((step, i) => {
             const state = lifecycleState(step.id, data)
             return (
@@ -173,7 +174,7 @@ export default function BriefDetail() {
                   </span>
                 </div>
                 {i < LIFECYCLE.length - 1 && (
-                  <div className="w-6 h-px bg-white/10 shrink-0 mb-5 mx-0.5" />
+                  <div className="hidden sm:block w-6 h-px bg-white/10 shrink-0 mb-5 mx-0.5" />
                 )}
               </div>
             )
@@ -207,10 +208,15 @@ export default function BriefDetail() {
           >
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
+              disallowedElements={['script', 'iframe', 'object', 'embed', 'form', 'input']}
+              unwrapDisallowed
               components={{
-                a: ({ ...props }) => (
-                  <a {...props} target="_blank" rel="noopener noreferrer" />
-                ),
+                a: ({ href, children, ...props }) => {
+                  const safe = href?.startsWith('http') || href?.startsWith('https') || href?.startsWith('/')
+                  return safe
+                    ? <a {...props} href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+                    : <span>{children}</span>
+                },
               }}
             >
               {data.report}

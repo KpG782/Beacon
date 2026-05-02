@@ -75,9 +75,9 @@ export default function SystemLogs() {
   }
 
   return (
-    <div className="px-8 py-8 flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
+    <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-8 flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
       {/* Header */}
-      <div className="flex justify-between items-end mb-6 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-6 shrink-0">
         <div>
           <h2 className="text-2xl font-semibold text-[#e5e2e3] mb-1">System Logs</h2>
           <p className="text-[13px] text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>

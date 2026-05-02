@@ -62,10 +62,11 @@ function SourceLedger({ urls }: { urls: string[] }) {
             path = parsed.pathname === '/' ? '' : parsed.pathname
           } catch {}
 
+          const safeHref = url.startsWith('http://') || url.startsWith('https://') ? url : '#'
           return (
             <a
               key={`${url}-${i}`}
-              href={url}
+              href={safeHref}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-start justify-between gap-3 border border-white/5 bg-black/25 px-3 py-2 hover:border-cyan-400/25 hover:bg-black/35 transition-colors"
@@ -150,9 +151,9 @@ export default function MemoryBank() {
   const totalFacts = memories.reduce((s, m) => s + m.keyFacts.length, 0)
 
   return (
-    <div className="px-8 py-8">
+    <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
       {/* Header */}
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8">
         <div>
           <h2 className="text-2xl font-semibold text-[#e5e2e3] mb-1">Memory Bank</h2>
           <p className="text-[13px] text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
@@ -167,7 +168,7 @@ export default function MemoryBank() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-8">
         {[
           { icon: 'database',  color: 'text-[#65f2b5]', label: 'Topics Indexed',  value: loading ? '—' : String(memories.length) },
           { icon: 'link',      color: 'text-cyan-400',  label: 'URLs Seen',       value: loading ? '—' : totalUrls >= 1000 ? (totalUrls/1000).toFixed(1)+'k' : String(totalUrls) },
@@ -220,6 +221,14 @@ export default function MemoryBank() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  <Link
+                    href={`/graph?topic=${encodeURIComponent(mem.topic)}`}
+                    className="text-[11px] text-[#65f2b5] hover:text-[#8af7c6] transition-colors flex items-center gap-1"
+                    style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">hub</span>
+                    Graph
+                  </Link>
                   <Link
                     href={`/briefs/new?topic=${encodeURIComponent(mem.topic)}`}
                     className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"

@@ -19,6 +19,7 @@ export interface BriefRecord {
   report?: string
   sources?: Array<{ title?: string; url: string; snippet?: string; index?: number; engine?: string }>
   error?: string
+  frameworkId?: string
 }
 
 export interface LogEntry {
