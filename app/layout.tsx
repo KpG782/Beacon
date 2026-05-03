@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
-import { Inter, Space_Grotesk } from 'next/font/google'
+import { Geist, Geist_Mono } from 'next/font/google'
+import { ClerkProvider } from '@clerk/nextjs'
 import { cn } from '@/lib/utils'
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site'
 import { LayoutShell } from '@/components/layout/layout-shell'
+import { beaconClerkAppearance } from '@/lib/clerk'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space-grotesk' })
+const geistSans = Geist({ subsets: ['latin'], variable: '--font-space-grotesk' })
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' })
 
 export const metadata: Metadata = {
   title: {
@@ -57,7 +59,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={cn('dark', inter.variable, spaceGrotesk.variable)}>
+    <html lang="en" className={cn('dark', geistSans.variable, geistMono.variable)}>
       <head>
         <link
           rel="stylesheet"
@@ -66,9 +68,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body
         className="antialiased"
-        style={{ fontFamily: 'var(--font-inter), system-ui, sans-serif' }}
+        style={{ fontFamily: 'var(--font-space-grotesk), system-ui, sans-serif' }}
       >
-        <LayoutShell>{children}</LayoutShell>
+        <ClerkProvider appearance={beaconClerkAppearance}>
+          <LayoutShell>{children}</LayoutShell>
+        </ClerkProvider>
       </body>
     </html>
   )

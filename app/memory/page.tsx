@@ -14,7 +14,7 @@ interface MemoryEntry {
 }
 
 function memorySlug(key: string) {
-  return key.replace('beacon:memory:', '')
+  return key.split(':').pop() ?? key
 }
 
 export default function MemoryBank() {

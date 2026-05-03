@@ -42,11 +42,24 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     return next
   })
 
-  if (pathname === '/') {
+  const isAuthPage = pathname === '/' ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/sign-in') ||
+    pathname.startsWith('/sign-up') ||
+    pathname.startsWith('/trial') ||
+    pathname.startsWith('/docs') ||
+    pathname.startsWith('/support') ||
+    pathname.startsWith('/privacy') ||
+    pathname.startsWith('/terms') ||
+    pathname.startsWith('/disclaimer') ||
+    pathname.startsWith('/profile/setup')
+
+  if (isAuthPage) {
     return <>{children}</>
   }
 
-  const ml = mounted && !isMobile ? (open ? SIDEBAR_OPEN_W : SIDEBAR_CLOSE_W) : 0
+  const ml = mounted && !isMobile ? (open ? SIDEBAR_OPEN_W + 32 : SIDEBAR_CLOSE_W + 32) : 0
 
   return (
     <SidebarContext.Provider value={{ open, isMobile, toggle }}>
@@ -67,7 +80,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
           style={{ marginLeft: ml, transition: 'margin-left 0.3s cubic-bezier(0.4,0,0.2,1)' }}
         >
           <TopBar />
-          <main className="flex-1 pt-16">{children}</main>
+          <main className={`flex-1 ${isMobile ? 'pt-16' : 'pt-24 px-4 pb-4 lg:pr-4 lg:pl-0'}`}>{children}</main>
         </div>
       </div>
     </SidebarContext.Provider>

@@ -21,7 +21,7 @@ export async function researchAgent(brief: ResearchBrief): Promise<ResearchRepor
   'use workflow'
 
   // [Memory] Step 1: Load memory — what do we already know?
-  const memory = await loadMemoryStep(brief.topic)
+  const memory = await loadMemoryStep(brief.userId, brief.topic)
 
   // [Context + Memory] Step 2: Plan — expand topic into targeted queries
   const plan = await planQueries(brief, memory)
@@ -48,6 +48,7 @@ export async function researchAgent(brief: ResearchBrief): Promise<ResearchRepor
   const runNow = new Date().toISOString()
   const prevRuns = memory?.runs ?? []
   await saveMemoryStep({
+    userId: brief.userId,
     topic: brief.topic,
     seenUrls: mergeUrls(memory?.seenUrls ?? [], extractAllUrls(rawResults)),
     keyFacts: facts,
@@ -80,11 +81,11 @@ export async function researchAgent(brief: ResearchBrief): Promise<ResearchRepor
 
 // ─── Step Functions ──────────────────────────────────────────────────────────
 
-async function loadMemoryStep(topic: string): Promise<AgentMemory | null> {
+async function loadMemoryStep(userId: string | undefined, topic: string): Promise<AgentMemory | null> {
   'use step'
   // [Memory] [Harness] — idempotent Redis read; null on first run or error
   const start = Date.now()
-  const result = await loadMemory(topic)
+  const result = userId ? await loadMemory(userId, topic) : await loadMemory(topic)
   console.log(
     `[beacon:step] loadMemory topic="${topic}" result=${result ? 'hit' : 'miss'} runCount=${result?.runCount ?? 0} ms=${Date.now() - start}`
   )

@@ -5,6 +5,7 @@ export interface UserKeys {
 
 export interface ResearchBrief {
   id?: string
+  userId?: string
   topic: string
   objective?: string
   focus?: string
@@ -49,6 +50,7 @@ export interface RunSummary {
 
 // [Memory] Core cross-session state persisted in Upstash Redis
 export interface AgentMemory {
+  userId?: string
   topic: string
   seenUrls: string[]
   keyFacts: string[]

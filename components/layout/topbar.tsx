@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { UserButton, Show } from '@clerk/nextjs'
 import { useSidebar, SIDEBAR_OPEN_W, SIDEBAR_CLOSE_W } from './layout-shell'
 
 const USER_KEYS_STORAGE = 'beacon:user:keys'
@@ -164,12 +165,14 @@ export default function TopBar() {
   const connected     = Object.values(status).filter(s => s.ok).length
   const totalServices = Object.values(status).length
   const { isMobile }  = useSidebar()
-  const leftOffset    = isMobile ? 0 : (open ? SIDEBAR_OPEN_W : SIDEBAR_CLOSE_W)
+  const leftOffset    = isMobile ? 0 : (open ? SIDEBAR_OPEN_W + 32 : SIDEBAR_CLOSE_W + 32)
 
   return (
     <header
-      className="fixed top-0 z-50 border-b border-white/10 bg-[#050505]/80 backdrop-blur-xl flex items-center justify-between px-3 sm:px-6 h-16"
-      style={{ left: leftOffset, right: 0, transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1)' }}
+      className={`fixed z-50 flex items-center justify-between px-3 sm:px-6 h-16 bg-[#050505]/80 backdrop-blur-xl ${
+        isMobile ? 'top-0 border-b border-white/10' : 'top-4 rounded-2xl border border-white/10 shadow-2xl'
+      }`}
+      style={{ left: leftOffset, right: isMobile ? 0 : 16, transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1)' }}
     >
       {/* Left */}
       <div className="flex items-center gap-5">
@@ -410,6 +413,33 @@ export default function TopBar() {
               </div>
             </PanelShell>
           )}
+        </div>
+
+        {/* ── 4. User button (Clerk) ── */}
+        <div className="ml-1 flex items-center">
+          <Show when="signed-in">
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: 'w-8 h-8',
+                  userButtonPopoverCard: 'bg-[#111111] border border-[#262626] shadow-none',
+                  userButtonPopoverActionButton: 'hover:bg-white/5 text-[#e5e5e5]',
+                  userButtonPopoverActionButtonText: 'text-[#e5e5e5]',
+                  userButtonPopoverFooter: 'hidden',
+                },
+              }}
+              userProfileUrl="/profile"
+            />
+          </Show>
+          <Show when="signed-out">
+            <Link
+              href="/sign-in"
+              className="text-[11px] font-bold tracking-wide px-3 py-1.5 rounded border border-[#262626] hover:border-orange-500/40 hover:text-orange-400 text-[#737373] transition-colors"
+              style={{ fontFamily: 'var(--font-space-grotesk)' }}
+            >
+              Sign in
+            </Link>
+          </Show>
         </div>
 
       </div>

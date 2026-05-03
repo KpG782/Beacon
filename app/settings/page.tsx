@@ -51,26 +51,34 @@ export default function SettingsPage() {
     if (!groqKey) return
     setTestGroq('testing')
     try {
-      const res = await fetch('/api/status')
+      const res = await fetch('/api/test-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groqApiKey: groqKey }),
+      })
       const data = await res.json()
-      setTestGroq(data?.groq?.ok ? 'ok' : 'ok') // If the status endpoint responds, key format is valid
+      setTestGroq(data?.groq?.ok ? 'ok' : 'fail')
     } catch {
       setTestGroq('fail')
     }
-    setTimeout(() => setTestGroq('idle'), 3000)
+    setTimeout(() => setTestGroq('idle'), 4000)
   }
 
   async function testSerpKey() {
     if (!serpKey) return
     setTestSerp('testing')
     try {
-      const res = await fetch('/api/status')
+      const res = await fetch('/api/test-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serpApiKey: serpKey }),
+      })
       const data = await res.json()
-      setTestSerp(data?.serpapi?.ok ? 'ok' : 'ok')
+      setTestSerp(data?.serpapi?.ok ? 'ok' : 'fail')
     } catch {
       setTestSerp('fail')
     }
-    setTimeout(() => setTestSerp('idle'), 3000)
+    setTimeout(() => setTestSerp('idle'), 4000)
   }
 
   const hasKeys = Boolean(groqKey || serpKey)

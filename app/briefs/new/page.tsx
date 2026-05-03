@@ -278,7 +278,16 @@ export default function NewBriefPage() {
           userKeys,
         }),
       })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) {
+        let msg = 'Failed to start research.'
+        try {
+          const errBody = await res.json()
+          msg = errBody?.error ?? msg
+        } catch {
+          msg = (await res.text()) || msg
+        }
+        throw new Error(msg)
+      }
       const { runId } = await res.json()
       window.localStorage.removeItem(DRAFT_KEY)
       router.push(`/briefs/${runId}`)

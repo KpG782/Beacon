@@ -36,7 +36,10 @@ export default function Sidebar() {
 
   return (
     <nav
-      className="fixed left-0 top-0 h-full border-r border-white/5 bg-[#050505] flex flex-col py-6 z-40 overflow-hidden"
+      className={cn(
+        "fixed flex flex-col py-6 z-40 overflow-hidden bg-[#050505]",
+        isMobile ? "left-0 top-0 h-full border-r border-white/5" : "left-4 top-4 bottom-4 h-[calc(100vh-32px)] rounded-2xl border border-white/10 shadow-2xl"
+      )}
       style={{
         width: sidebarWidth,
         transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)',

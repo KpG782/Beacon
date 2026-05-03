@@ -1,4 +1,5 @@
 import { start } from 'workflow/api'
+import { auth } from '@clerk/nextjs/server'
 import { researchAgent } from '@/workflows/research'
 import { loadMemory } from '@/lib/memory'
 import { appendLog, hydrateBriefIndex, saveBriefRecord, syncBriefRecord } from '@/lib/brief-store'
@@ -10,6 +11,9 @@ const VALID_SOURCES = ['slack', 'github', 'discord', 'dashboard', 'mcp'] as cons
 const VALID_DEPTHS  = ['quick', 'deep'] as const
 
 export async function POST(req: NextRequest) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
   // Rate limit: 5 research runs per hour per IP — SerpAPI and Groq cost money
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
   const rl  = await rateLimit(ip, 'research', LIMITS.research.limit, LIMITS.research.windowSecs)
@@ -46,11 +50,12 @@ export async function POST(req: NextRequest) {
         }
       : undefined
 
-  const brief = { topic, objective, focus, source, depth, timeframe, reportStyle, recurring, frameworkId, userKeys }
+  const brief = { userId, topic, objective, focus, source, depth, timeframe, reportStyle, recurring, frameworkId, userKeys }
   const run = await start(researchAgent, [brief])
-  const existingMemory = await loadMemory(brief.topic)
+  const existingMemory = await loadMemory(userId, brief.topic)
 
   const record = {
+    userId,
     runId: run.runId,
     topic: brief.topic,
     status: 'running' as const,
@@ -66,6 +71,7 @@ export async function POST(req: NextRequest) {
 
   await saveBriefRecord(record)
   appendLog({
+    userId,
     level: 'info',
     category: 'workflow',
     message: `Workflow started: "${brief.topic}" — run #${record.runCount} via ${record.source}`,
@@ -73,6 +79,7 @@ export async function POST(req: NextRequest) {
   })
   if (existingMemory) {
     appendLog({
+      userId,
       level: 'success',
       category: 'memory',
       message: `Memory loaded: ${existingMemory.keyFacts.length} facts, ${existingMemory.seenUrls.length} URLs for "${brief.topic}"`,
@@ -80,6 +87,7 @@ export async function POST(req: NextRequest) {
     })
   } else {
     appendLog({
+      userId,
       level: 'info',
       category: 'memory',
       message: `First run for "${brief.topic}" — no prior memory`,
@@ -91,7 +99,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const records = await hydrateBriefIndex()
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+
+  const records = await hydrateBriefIndex(userId)
   const synced = await Promise.all(records.map((record) => syncBriefRecord(record.runId)))
   return NextResponse.json(
     synced
