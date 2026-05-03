@@ -24,15 +24,29 @@ export async function POST(req: NextRequest) {
 
   const topic = typeof body.topic === 'string' ? body.topic.trim().slice(0, 500) : ''
   if (!topic) return NextResponse.json({ error: 'topic is required' }, { status: 400 })
+  const objective = typeof body.objective === 'string' ? body.objective.trim().slice(0, 300) : undefined
+  const focus = typeof body.focus === 'string' ? body.focus.trim().slice(0, 300) : undefined
 
   const source      = VALID_SOURCES.includes(body.source)  ? body.source  : 'dashboard'
   const depth       = VALID_DEPTHS.includes(body.depth)    ? body.depth   : 'deep'
+  const timeframe   = ['7d', '30d', '90d', 'all'].includes(body.timeframe) ? body.timeframe : '30d'
+  const reportStyle = ['executive', 'bullet', 'memo', 'framework'].includes(body.reportStyle) ? body.reportStyle : 'executive'
   const recurring   = typeof body.recurring === 'boolean'  ? body.recurring : false
   const frameworkId = typeof body.frameworkId === 'string' && FRAMEWORK_IDS.has(body.frameworkId)
     ? body.frameworkId
     : undefined
 
-  const brief = { topic, source, depth, recurring, frameworkId }
+  // BYOK — accept user-supplied API keys; never log them
+  const userKeys =
+    body.userKeys &&
+    (typeof body.userKeys.groqApiKey === 'string' || typeof body.userKeys.serpApiKey === 'string')
+      ? {
+          groqApiKey: typeof body.userKeys.groqApiKey === 'string' ? body.userKeys.groqApiKey : undefined,
+          serpApiKey: typeof body.userKeys.serpApiKey === 'string' ? body.userKeys.serpApiKey : undefined,
+        }
+      : undefined
+
+  const brief = { topic, objective, focus, source, depth, timeframe, reportStyle, recurring, frameworkId, userKeys }
   const run = await start(researchAgent, [brief])
   const existingMemory = await loadMemory(brief.topic)
 

@@ -24,10 +24,12 @@ export async function GET(req: Request) {
   const limit = Math.min(Number(searchParams.get('limit') ?? 100), 500)
   const level = searchParams.get('level')
   const category = searchParams.get('category')
+  const runId = searchParams.get('runId')
 
   let entries = [...logStore]
   if (level)    entries = entries.filter(e => e.level === level)
   if (category) entries = entries.filter(e => e.category === category)
+  if (runId)    entries = entries.filter(e => e.runId === runId)
 
   return NextResponse.json(entries.slice(0, limit))
 }

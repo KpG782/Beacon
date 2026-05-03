@@ -6,11 +6,12 @@ import { cn } from '@/lib/utils'
 import { useSidebar, SIDEBAR_OPEN_W, SIDEBAR_CLOSE_W } from './layout-shell'
 
 const NAV = [
-  { href: '/',           icon: 'home',       label: 'Landing' },
   { href: '/dashboard',  icon: 'dashboard',  label: 'Dashboard' },
   { href: '/briefs/new', icon: 'add_circle', label: 'New Research' },
+  { href: '/briefs',     icon: 'list_alt',   label: 'All Briefs' },
   { href: '/graph',      icon: 'hub',        label: 'Research Graph' },
   { href: '/memory',     icon: 'database',   label: 'Memory Bank' },
+  { href: '/settings',   icon: 'settings',   label: 'Settings' },
   { href: '/logs',       icon: 'terminal',   label: 'System Logs' },
 ]
 
@@ -52,7 +53,7 @@ export default function Sidebar() {
         }}
       >
         {open ? (
-          <Link href="/" onClick={handleNavClick} className="flex items-center gap-3">
+          <Link href="/dashboard" onClick={handleNavClick} className="flex items-center gap-3">
             <div className="w-8 h-8 shrink-0 rounded-lg bg-cyan-400/20 flex items-center justify-center border border-cyan-400/30">
               <span className="material-symbols-outlined text-cyan-400 text-[18px]">adjust</span>
             </div>
@@ -64,7 +65,7 @@ export default function Sidebar() {
             </div>
           </Link>
         ) : (
-          <Link href="/" className="w-8 h-8 shrink-0 rounded-lg bg-cyan-400/20 flex items-center justify-center border border-cyan-400/30">
+          <Link href="/dashboard" className="w-8 h-8 shrink-0 rounded-lg bg-cyan-400/20 flex items-center justify-center border border-cyan-400/30">
             <span className="material-symbols-outlined text-cyan-400 text-[18px]">adjust</span>
           </Link>
         )}
@@ -105,8 +106,8 @@ export default function Sidebar() {
       {/* Nav */}
       <div className="flex-1 flex flex-col gap-0.5">
         {NAV.map(item => {
-          const isActive = item.href === '/'
-            ? pathname === '/'
+          const isActive = item.href === '/briefs'
+            ? pathname === '/briefs'
             : pathname === item.href || pathname.startsWith(`${item.href}/`)
           return (
             <Link

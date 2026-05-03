@@ -9,7 +9,7 @@ export interface GraphSceneNode {
   id: string
   label: string
   sublabel: string
-  kind: 'topic' | 'report' | 'memory' | 'source'
+  kind: 'topic' | 'report' | 'memory' | 'source' | 'query'
   color: string
   size: number
   detail?: string
@@ -28,10 +28,18 @@ interface PositionedNode extends GraphSceneNode {
 }
 
 function nodePosition(node: GraphSceneNode, sourceIndex: number, sourceCount: number): [number, number, number] {
-  if (node.kind === 'topic') return [0, 0, 0]
+  if (node.kind === 'topic')  return [0, 0, 0]
   if (node.kind === 'report') return [0, 2.6, 0.2]
   if (node.kind === 'memory') return [-2.7, -1.8, 0.4]
 
+  // Query nodes orbit at a tighter radius, slightly elevated
+  if (node.kind === 'query') {
+    const angle = (Math.PI * 2 * sourceIndex) / Math.max(sourceCount, 1)
+    const radius = 2.8
+    return [Math.cos(angle) * radius, 0.8, Math.sin(angle) * radius]
+  }
+
+  // Source nodes on the outer ring
   const angle = (Math.PI * 2 * sourceIndex) / Math.max(sourceCount, 1)
   const radius = 4.5 + (sourceIndex % 2) * 0.55
   const y = Math.sin(angle * 1.4) * 1.35
@@ -198,13 +206,19 @@ function Scene({
   onSelect: (node: GraphSceneNode) => void
 }) {
   const positioned = useMemo(() => {
-    const sources = nodes.filter((node) => node.kind === 'source')
+    const sources = nodes.filter((n) => n.kind === 'source')
+    const queries = nodes.filter((n) => n.kind === 'query')
     let sourceIndex = 0
+    let queryIndex  = 0
     return nodes.map((node) => {
-      const position =
-        node.kind === 'source'
-          ? nodePosition(node, sourceIndex++, sources.length)
-          : nodePosition(node, 0, sources.length)
+      let position: [number, number, number]
+      if (node.kind === 'source') {
+        position = nodePosition(node, sourceIndex++, sources.length)
+      } else if (node.kind === 'query') {
+        position = nodePosition(node, queryIndex++, queries.length)
+      } else {
+        position = nodePosition(node, 0, sources.length)
+      }
       return { ...node, position }
     })
   }, [nodes])
@@ -250,7 +264,14 @@ function Scene({
         <meshStandardMaterial color="#173038" emissive="#173038" emissiveIntensity={0.14} />
       </mesh>
       <Sparkles count={42} scale={9} size={1.6} speed={0.35} color="#7de9ff" />
-      <OrbitControls enablePan enableZoom autoRotate autoRotateSpeed={0.28} />
+      <OrbitControls
+        enablePan
+        enableZoom
+        autoRotate
+        autoRotateSpeed={0.28}
+        minDistance={5.8}
+        maxDistance={11.5}
+      />
     </>
   )
 }

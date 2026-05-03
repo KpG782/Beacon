@@ -1,12 +1,22 @@
+export interface UserKeys {
+  groqApiKey?: string
+  serpApiKey?: string
+}
+
 export interface ResearchBrief {
   id?: string
   topic: string
+  objective?: string
+  focus?: string
   depth?: 'quick' | 'deep'
+  timeframe?: '7d' | '30d' | '90d' | 'all'
+  reportStyle?: 'executive' | 'bullet' | 'memo' | 'framework'
   recurring?: boolean
   recurringInterval?: string
   mode?: 'full' | 'delta'
   source?: 'slack' | 'github' | 'discord' | 'dashboard' | 'mcp'
   frameworkId?: string
+  userKeys?: UserKeys
 }
 
 export interface ResearchReport {
@@ -17,6 +27,8 @@ export interface ResearchReport {
   generatedAt: string
   runCount: number
   isDelta: boolean
+  queryPlan?: QueryPlan
+  deltaUrls?: string[]
 }
 
 export interface Source {
@@ -27,14 +39,24 @@ export interface Source {
   engine: string
 }
 
+export interface RunSummary {
+  runAt: string
+  runCount: number
+  urlsAdded: number
+  factsAdded: number
+  summary: string
+}
+
 // [Memory] Core cross-session state persisted in Upstash Redis
 export interface AgentMemory {
   topic: string
   seenUrls: string[]
   keyFacts: string[]
+  factSources?: string[]
   lastRunAt: string
   runCount: number
   reportSummary: string
+  runs?: RunSummary[]
 }
 
 export interface QueryPlan {

@@ -4,6 +4,44 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSidebar, SIDEBAR_OPEN_W, SIDEBAR_CLOSE_W } from './layout-shell'
 
+const USER_KEYS_STORAGE = 'beacon:user:keys'
+
+function useUserKeys() {
+  const [groqKey, setGroqKey] = useState('')
+  const [serpKey, setSerpKey] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(USER_KEYS_STORAGE)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.groqApiKey) setGroqKey(parsed.groqApiKey)
+        if (parsed.serpApiKey) setSerpKey(parsed.serpApiKey)
+      }
+    } catch {}
+  }, [])
+
+  function save() {
+    try {
+      localStorage.setItem(USER_KEYS_STORAGE, JSON.stringify({ groqApiKey: groqKey, serpApiKey: serpKey }))
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {}
+  }
+
+  function clear() {
+    try {
+      localStorage.removeItem(USER_KEYS_STORAGE)
+      setGroqKey('')
+      setSerpKey('')
+    } catch {}
+  }
+
+  const hasKeys = Boolean(groqKey || serpKey)
+  return { groqKey, setGroqKey, serpKey, setSerpKey, save, clear, saved, hasKeys }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LogEntry {
@@ -57,6 +95,7 @@ function PanelShell({ title, children, action }: { title: string; children: Reac
 export default function TopBar() {
   const { open, toggle } = useSidebar()
   const [panel, setPanel]       = useState<Panel>(null)
+  const userKeys = useUserKeys()
   const [logs, setLogs]         = useState<LogEntry[]>([])
   const [unread, setUnread]     = useState(0)
   const [status, setStatus]     = useState<Record<string, ServiceStatus>>({})
@@ -177,15 +216,64 @@ export default function TopBar() {
 
           {panel === 'settings' && (
             <PanelShell title="Settings" action={
-              <Link href="/docs" onClick={() => setPanel(null)}
+              <Link href="/settings" onClick={() => setPanel(null)}
                     className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors"
                     style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                Open docs →
+                Full settings →
               </Link>
             }>
-              <div className="p-4 flex flex-col gap-4">
-                {/* App info */}
+              <div className="p-4 flex flex-col gap-4 max-h-[480px] overflow-y-auto">
+                {/* BYOK — Your API Keys */}
                 <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="text-[10px] font-bold tracking-widest uppercase text-[#3b494b]"
+                         style={{ fontFamily: 'var(--font-space-grotesk)' }}>Your API Keys</div>
+                    {userKeys.hasKeys && (
+                      <span className="text-[9px] font-bold tracking-wider uppercase text-[#65f2b5] px-1.5 py-0.5 border border-[#65f2b5]/30 rounded"
+                            style={{ fontFamily: 'var(--font-space-grotesk)' }}>Using your keys</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[#3b494b]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    Keys stored in browser only. Never sent to Beacon servers at rest.
+                  </p>
+                  {[
+                    { label: 'Groq API Key', placeholder: 'gsk_...', value: userKeys.groqKey, set: userKeys.setGroqKey },
+                    { label: 'SerpAPI Key', placeholder: 'sk-...', value: userKeys.serpKey, set: userKeys.setSerpKey },
+                  ].map(f => (
+                    <div key={f.label} className="flex flex-col gap-1">
+                      <span className="text-[10px] text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>{f.label}</span>
+                      <input
+                        type="password"
+                        value={f.value}
+                        onChange={e => f.set(e.target.value)}
+                        placeholder={f.placeholder}
+                        className="w-full bg-black/40 text-[#e5e2e3] text-[11px] px-2.5 py-2 border border-white/10 outline-none placeholder:text-[#3b494b] focus:border-cyan-400/40 transition-colors font-mono"
+                        style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}
+                        autoComplete="off"
+                      />
+                    </div>
+                  ))}
+                  <div className="flex gap-2 mt-1">
+                    <button
+                      onClick={userKeys.save}
+                      className="flex-1 text-[11px] font-bold tracking-widest uppercase py-2 border border-cyan-400/40 text-cyan-400 hover:bg-cyan-400/10 transition-colors"
+                      style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                    >
+                      {userKeys.saved ? 'Saved ✓' : 'Save Keys'}
+                    </button>
+                    {userKeys.hasKeys && (
+                      <button
+                        onClick={userKeys.clear}
+                        className="text-[11px] text-slate-500 hover:text-[#ffb4ab] transition-colors px-3"
+                        style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {/* App info */}
+                <div className="flex flex-col gap-2 border-t border-white/10 pt-3">
                   <div className="text-[10px] font-bold tracking-widest uppercase text-[#3b494b]"
                        style={{ fontFamily: 'var(--font-space-grotesk)' }}>Application</div>
                   {[
@@ -199,29 +287,6 @@ export default function TopBar() {
                       <span className="text-[#849495]">{r.label}</span>
                       <span className="text-[#e5e2e3]">{r.value}</span>
                     </div>
-                  ))}
-                </div>
-                {/* Quick links */}
-                <div className="flex flex-col gap-1 border-t border-white/10 pt-3">
-                  <div className="text-[10px] font-bold tracking-widest uppercase text-[#3b494b] mb-1"
-                       style={{ fontFamily: 'var(--font-space-grotesk)' }}>Quick Links</div>
-                  {[
-                    { label: 'Research Graph', href: '/graph',      icon: 'hub' },
-                    { label: 'System Logs',   href: '/logs',       icon: 'terminal' },
-                    { label: 'Memory Bank',   href: '/memory',     icon: 'database' },
-                    { label: 'Docs',          href: '/docs',       icon: 'menu_book' },
-                    { label: 'Support',       href: '/support',    icon: 'contact_support' },
-                    { label: 'MCP Guide',     href: '/docs#mcp',   icon: 'hub' },
-                    { label: 'SDK Guide',     href: '/docs#sdk',   icon: 'code_blocks' },
-                    { label: 'CLI Status',    href: '/docs#cli',   icon: 'terminal' },
-                  ].map(l => (
-                    <Link key={l.label} href={l.href}
-                          onClick={() => setPanel(null)}
-                          className="flex items-center gap-2 text-[12px] text-[#849495] hover:text-cyan-400 py-1 transition-colors"
-                          style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                      <span className="material-symbols-outlined text-[14px]">{l.icon}</span>
-                      {l.label}
-                    </Link>
                   ))}
                 </div>
               </div>

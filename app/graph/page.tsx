@@ -22,11 +22,19 @@ interface SourceRecord {
   engine?: string
 }
 
+interface QueryEntry {
+  q: string
+  engine: string
+  intent: string
+}
+
 interface BriefDetail extends BriefListRecord {
   report?: string
   sources?: SourceRecord[]
   hasMemory?: boolean
   memoryFacts?: number
+  deltaUrls?: string[]
+  queryPlan?: { queries: QueryEntry[] }
 }
 
 interface MemoryEntry {
@@ -67,6 +75,8 @@ function buildGraphNodes(
 } {
   if (!detail && !memory) return { nodes: [], links: [] }
 
+  const deltaSet = new Set(detail?.deltaUrls ?? [])
+
   const sourceNodes: GraphSource[] = (
     detail?.sources
     ?? memory?.seenUrls.map((url) => ({
@@ -76,6 +86,13 @@ function buildGraphNodes(
     }))
     ?? []
   ).slice(0, 14)
+
+  // All key facts for memory node detail
+  const allFacts = memory?.keyFacts ?? []
+  const factLines = allFacts.length
+    ? allFacts.map((f, i) => `${i + 1}. ${f}`).join('\n')
+    : 'No key facts extracted yet.'
+
   const nodes: GraphSceneNode[] = [
     {
       id: 'topic',
@@ -89,6 +106,7 @@ function buildGraphNodes(
         `status: ${detail?.status ?? 'memory-only'}`,
         `sources: ${detail?.sources?.length ?? memory?.seenUrls.length ?? 0}`,
         `facts: ${detail?.memoryFacts ?? memory?.keyFacts.length ?? 0}`,
+        `new sources this run: ${deltaSet.size}`,
       ],
     },
     {
@@ -112,15 +130,16 @@ function buildGraphNodes(
     {
       id: 'memory',
       label: detail?.hasMemory ?? memory ? 'memory linked' : 'fresh memory',
-      sublabel: `${detail?.memoryFacts ?? memory?.keyFacts.length ?? 0} facts`,
+      sublabel: `${detail?.memoryFacts ?? memory?.keyFacts.length ?? 0} facts · ${memory?.seenUrls.length ?? 0} URLs`,
       kind: 'memory',
       color: '#65f2b5',
       size: 9,
-      detail: memory?.keyFacts.join(' • ') || 'No key facts extracted yet.',
+      detail: factLines,
       meta: [
         `run count: ${memory?.runCount ?? detail?.runCount ?? 0}`,
         `last run: ${memory?.lastRunAt ? new Date(memory.lastRunAt).toLocaleDateString() : 'unknown'}`,
         `urls indexed: ${memory?.seenUrls.length ?? detail?.sources?.length ?? 0}`,
+        `facts extracted: ${allFacts.length}`,
       ],
     },
   ]
@@ -130,26 +149,50 @@ function buildGraphNodes(
     { from: 'memory', to: 'topic', color: '#65f2b5' },
   ]
 
+  // Query plan nodes — one node per query, linked to topic
+  const queries = detail?.queryPlan?.queries ?? []
+  queries.slice(0, 8).forEach((q, index) => {
+    const id = `query-${index}`
+    nodes.push({
+      id,
+      label: truncate(q.q, 26),
+      sublabel: q.engine,
+      kind: 'query' as GraphSceneNode['kind'],
+      color: '#ffb84e',
+      size: 6,
+      detail: q.q,
+      meta: [
+        `engine: ${q.engine}`,
+        `intent: ${q.intent ?? 'search'}`,
+        `query #${index + 1}`,
+      ],
+    })
+    links.push({ from: id, to: 'topic', color: '#3d2e0a' })
+  })
+
+  // Source nodes — color new (delta) vs known differently
   sourceNodes.forEach((source, index) => {
     const id = `source-${index}`
+    const isNew = deltaSet.has(source.url)
 
     nodes.push({
       id,
       label: truncate(source.title || hostLabel(source.url), 22),
-      sublabel: source.engine ?? 'source',
+      sublabel: isNew ? `NEW · ${source.engine ?? 'source'}` : source.engine ?? 'source',
       kind: 'source',
-      color: '#9ed8ff',
-      size: 7.5,
+      color: isNew ? '#00dbe9' : '#9ed8ff',
+      size: isNew ? 8.5 : 6.5,
       detail: source.snippet ?? source.url,
       url: source.url,
       meta: [
         `host: ${hostLabel(source.url)}`,
         `engine: ${source.engine ?? 'unknown'}`,
+        isNew ? 'new this run' : 'previously indexed',
         source.title ? `title: ${truncate(source.title, 52)}` : 'title: unavailable',
       ],
     })
 
-    links.push({ from: id, to: 'topic', color: '#2a5968' })
+    links.push({ from: id, to: 'topic', color: isNew ? '#1a4a54' : '#2a5968' })
   })
 
   return { nodes, links }
@@ -325,9 +368,11 @@ export default function GraphPage() {
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               {[
-                ['Topic node', detail?.topic ?? memory?.topic ?? '—'],
-                ['Source nodes', String(detail?.sources?.length ?? memory?.seenUrls.length ?? 0)],
-                ['Memory facts', String(detail?.memoryFacts ?? memory?.keyFacts.length ?? 0)],
+                ['Topic node',    detail?.topic ?? memory?.topic ?? '—'],
+                ['Source nodes',  String(detail?.sources?.length ?? memory?.seenUrls.length ?? 0)],
+                ['New this run',  String(detail?.deltaUrls?.length ?? 0)],
+                ['Query nodes',   String(detail?.queryPlan?.queries.length ?? 0)],
+                ['Memory facts',  String(detail?.memoryFacts ?? memory?.keyFacts.length ?? 0)],
               ].map(([title, value]) => (
                 <div key={title} className="border border-white/8 bg-black/20 p-4">
                   <div
@@ -436,11 +481,23 @@ export default function GraphPage() {
                   How to read this
                 </div>
                 <div className="flex flex-col gap-2 text-[12px] leading-6 text-[#a0b1b4]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                  <div>Drag to rotate the graph and zoom to inspect clusters.</div>
-                  <div>Click any node to inspect the real research fields for that item.</div>
-                  <div>The center node is the topic core for this run or memory entry.</div>
-                  <div>Outer nodes are source URLs feeding Beacon&apos;s second-brain mesh.</div>
-                  <div>Source nodes now expose the title, engine, snippet, and open-link action.</div>
+                  <div>Drag to rotate · scroll to zoom · click to inspect any node.</div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-[#00dbe9] shrink-0" />
+                    <span>Cyan center = topic · bright cyan sources = new this run</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-[#ffb84e] shrink-0" />
+                    <span>Amber nodes = search queries generated by the agent</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-[#65f2b5] shrink-0" />
+                    <span>Green = memory node — click to see all extracted facts</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-[#9ed8ff] shrink-0" />
+                    <span>Muted blue sources = previously indexed (delta filtered)</span>
+                  </div>
                 </div>
               </div>
             </div>

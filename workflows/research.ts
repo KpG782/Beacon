@@ -1,11 +1,11 @@
 import { sleep } from 'workflow'
 import { generateText } from 'ai'
-import { scoutModel, synthModel } from '@/lib/groq'
+import { createScoutModel, createSynthModel } from '@/lib/groq'
 import {
-  serpApiTool,
+  createSerpApiTool,
   compressSerpResults,
   extractAllUrls,
-  extractKeyFacts,
+  extractKeyFactsWithSources,
 } from '@/lib/serpapi'
 import {
   loadMemory,
@@ -28,8 +28,12 @@ export async function researchAgent(brief: ResearchBrief): Promise<ResearchRepor
 
   // [Context] Step 3: Search — fan out SerpAPI queries in parallel
   const rawResults = await Promise.all(
-    plan.queries.map((q) => runSerpQuery(q.q, q.engine))
+    plan.queries.map((q) => runSerpQuery(q.q, q.engine, brief.userKeys?.serpApiKey))
   )
+
+  // [Memory] Identify which URLs are new (delta) vs already known
+  const seenSet = new Set(memory?.seenUrls ?? [])
+  const allNewUrls = extractAllUrls(rawResults).filter((u) => !seenSet.has(u))
 
   // [Memory] Filter out URLs we've already seen (produces delta content)
   const freshResults = memory
@@ -37,16 +41,30 @@ export async function researchAgent(brief: ResearchBrief): Promise<ResearchRepor
     : rawResults
 
   // [Context + Memory] Step 4: Synthesize — write the report from fresh context
-  const report = await synthesizeReport(freshResults, brief, memory)
+  const report = await synthesizeReport(freshResults, brief, memory, plan, allNewUrls)
 
   // [Memory] Step 5: Save memory — update what we know for next run
+  const { facts, factSources } = extractKeyFactsWithSources(report.content, report.sources)
+  const runNow = new Date().toISOString()
+  const prevRuns = memory?.runs ?? []
   await saveMemoryStep({
     topic: brief.topic,
     seenUrls: mergeUrls(memory?.seenUrls ?? [], extractAllUrls(rawResults)),
-    keyFacts: extractKeyFacts(report.content),
-    lastRunAt: new Date().toISOString(),
+    keyFacts: facts,
+    factSources,
+    lastRunAt: runNow,
     runCount: (memory?.runCount ?? 0) + 1,
     reportSummary: report.summary,
+    runs: [
+      ...prevRuns.slice(-9),
+      {
+        runAt: runNow,
+        runCount: (memory?.runCount ?? 0) + 1,
+        urlsAdded: allNewUrls.length,
+        factsAdded: facts.length,
+        summary: report.summary.slice(0, 160),
+      },
+    ],
   })
 
   // [Harness] Step 6: Recurring — sleep then rerun (zero compute during sleep)
@@ -85,9 +103,16 @@ async function planQueries(
   const memoryContext = buildMemoryContext(memory)
   const isRerun = memory && memory.runCount > 0
   const framework = brief.frameworkId ? FRAMEWORKS_BY_ID.get(brief.frameworkId) : null
+  const scout = createScoutModel(brief.userKeys?.groqApiKey)
+  const timeframeGuidance = {
+    '7d': 'prioritize only the last 7 days unless foundational context is required',
+    '30d': 'prioritize the last 30 days while retaining enough baseline context to explain changes',
+    '90d': 'prioritize the last 90 days and major shifts within the quarter',
+    all: 'cover the broader landscape, history, current state, and recent changes',
+  }[brief.timeframe ?? '30d']
 
   const { text } = await generateText({
-    model: scoutModel,
+    model: scout,
     system: `You are a research planning agent.
 ${memoryContext}
 
@@ -96,7 +121,11 @@ ${
   isRerun
     ? `Since this is a rerun, focus on: recent news, new releases, price changes, announcements since ${new Date(memory!.lastRunAt).toLocaleDateString()}`
     : 'Since this is a fresh run, cover: overview, comparisons, recent news, use cases, pricing, community sentiment.'
-}${framework ? `\n\n## Research Framework: ${framework.name}\n${framework.queryHint}` : ''}
+}
+Time window guidance: ${timeframeGuidance}.
+${brief.objective ? `Primary objective: ${brief.objective}` : ''}
+${brief.focus ? `Priority focus areas: ${brief.focus}` : ''}
+${framework ? `\n\n## Research Framework: ${framework.name}\n${framework.queryHint}` : ''}
 
 Return ONLY valid JSON, no markdown, no explanation:
 {
@@ -133,15 +162,17 @@ Available engines: google, google_news, google_scholar, google_jobs, bing`,
 
 async function runSerpQuery(
   q: string,
-  engine: 'google' | 'google_news' | 'google_scholar' | 'google_jobs' | 'bing'
+  engine: 'google' | 'google_news' | 'google_scholar' | 'google_jobs' | 'bing',
+  serpApiKey?: string
 ) {
   'use step'
   // [Context] [Harness] — one SerpAPI call, forced tool use, idempotent step
 
   const start = Date.now()
+  const scout = createScoutModel()
   const { toolResults } = await generateText({
-    model: scoutModel,
-    tools: { serpapi_search: serpApiTool },
+    model: scout,
+    tools: { serpapi_search: createSerpApiTool(serpApiKey) },
     toolChoice: 'required',
     prompt: `Search: "${q}" using ${engine} engine. Return 8 results.`,
     maxSteps: 1,
@@ -157,7 +188,9 @@ async function runSerpQuery(
 async function synthesizeReport(
   serpResults: Array<{ results?: Array<{ title?: string; url?: string; snippet?: string; engine?: string }> }>,
   brief: ResearchBrief,
-  memory: AgentMemory | null
+  memory: AgentMemory | null,
+  queryPlan: QueryPlan,
+  deltaUrls: string[]
 ): Promise<ResearchReport> {
   'use step'
   // [Context] [Memory] — synthModel writes cited report from compressed fresh context
@@ -167,9 +200,22 @@ async function synthesizeReport(
   const runCount = (memory?.runCount ?? 0) + 1
   const isDelta = runCount > 1
   const framework = brief.frameworkId ? FRAMEWORKS_BY_ID.get(brief.frameworkId) : null
+  const synth = createSynthModel(brief.userKeys?.groqApiKey)
+  const reportStyleGuidance = {
+    executive: 'Write for a busy operator. Be concise, scannable, and decision-oriented.',
+    bullet: 'Favor compact bullets, short sections, and terse findings over narrative prose.',
+    memo: 'Write as an analyst memo with slightly more context, nuance, and interpretation.',
+    framework: 'Structure the output tightly around the selected framework when one is present; otherwise use a structured analytical report.',
+  }[brief.reportStyle ?? 'executive']
+  const timeframeLabel = {
+    '7d': 'last 7 days',
+    '30d': 'last 30 days',
+    '90d': 'last 90 days',
+    all: 'broader historical and current landscape',
+  }[brief.timeframe ?? '30d']
 
   const { text, usage } = await generateText({
-    model: synthModel,
+    model: synth,
     system: `You are a research analyst. Write a clear, cited research report.
 
 ${
@@ -178,6 +224,11 @@ ${
 Start with "## What Changed Since Last Week" before the full report.`
     : `This is the first research run. Write a comprehensive overview report.`
 }
+
+Research objective: ${brief.objective || 'Identify the most important findings for this topic.'}
+Priority focus areas: ${brief.focus || 'Overview, current developments, and notable changes.'}
+Time scope: ${timeframeLabel}
+Writing style: ${reportStyleGuidance}
 
 Format:
 ${isDelta ? '## What Changed Since Last Week\n[2-3 sentences on key changes]\n\n' : ''}## Executive Summary
@@ -225,6 +276,8 @@ ${context}`,
     generatedAt: new Date().toISOString(),
     runCount,
     isDelta,
+    queryPlan,
+    deltaUrls,
   }
 }
 
@@ -234,6 +287,6 @@ async function saveMemoryStep(memory: AgentMemory): Promise<void> {
   const start = Date.now()
   await saveMemory(memory)
   console.log(
-    `[beacon:step] saveMemory topic="${memory.topic}" urls=${memory.seenUrls.length} facts=${memory.keyFacts.length} ms=${Date.now() - start}`
+    `[beacon:step] saveMemory topic="${memory.topic}" urls=${memory.seenUrls.length} facts=${memory.keyFacts.length} runs=${memory.runs?.length ?? 0} ms=${Date.now() - start}`
   )
 }

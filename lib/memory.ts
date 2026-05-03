@@ -2,7 +2,7 @@ import type { AgentMemory } from './types'
 
 const MEMORY_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 
-function memoryKey(topic: string): string {
+export function memoryKey(topic: string): string {
   const slug = topic
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, '')

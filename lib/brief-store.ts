@@ -1,5 +1,5 @@
 import { getRun } from 'workflow/api'
-import type { ResearchReport } from '@/lib/types'
+import type { ResearchReport, QueryPlan } from '@/lib/types'
 
 const BRIEF_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 const BRIEF_INDEX_KEY = 'beacon:briefs:index'
@@ -20,6 +20,8 @@ export interface BriefRecord {
   sources?: Array<{ title?: string; url: string; snippet?: string; index?: number; engine?: string }>
   error?: string
   frameworkId?: string
+  queryPlan?: QueryPlan
+  deltaUrls?: string[]
 }
 
 export interface LogEntry {
@@ -154,6 +156,8 @@ export async function syncBriefRecord(runId: string): Promise<BriefRecord | null
         report: report.content,
         sources: report.sources,
         runCount: report.runCount,
+        queryPlan: report.queryPlan,
+        deltaUrls: report.deltaUrls,
       })
 
       if (next) {
