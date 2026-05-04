@@ -18,6 +18,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/public-search(.*)',
   '/api/public-download(.*)',
   '/api/trial(.*)',
+  '/api/demo(.*)',
   '/api/auth/(.*)',
   '/api/webhooks/(.*)',
   '/.well-known/(.*)',

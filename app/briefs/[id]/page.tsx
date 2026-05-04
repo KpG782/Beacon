@@ -6,6 +6,7 @@ import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import FrameworkBanner from '@/components/research/framework-banner'
+import { briefToMarkdown, sourcesToCsv, briefToJson, triggerDownload } from '@/lib/export'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -388,14 +389,23 @@ export default function BriefDetail() {
     })
   }
 
+  function exportSlug() {
+    return (data?.topic ?? 'report').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+  }
+
   function exportMd() {
     if (!data?.report) return
-    const slug = (data.topic ?? 'report').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
-    const blob = new Blob([data.report], { type: 'text/markdown' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href = url; a.download = `${slug}.md`; a.click()
-    URL.revokeObjectURL(url)
+    triggerDownload(briefToMarkdown(data), `${exportSlug()}.md`, 'text/markdown')
+  }
+
+  function exportCsv() {
+    if (!data?.sources?.length) return
+    triggerDownload(sourcesToCsv(data.sources, data.deltaUrls), `${exportSlug()}-sources.csv`, 'text/csv')
+  }
+
+  function exportJson() {
+    if (!data) return
+    triggerDownload(briefToJson(data), `${exportSlug()}-run.json`, 'application/json')
   }
 
   async function runAgain() {
@@ -566,6 +576,12 @@ export default function BriefDetail() {
               />
               <ActionBtn icon="download" label="Export .md" onClick={exportMd} />
             </>
+          )}
+          {allSources.length > 0 && (
+            <ActionBtn icon="table_view" label="Sources CSV" onClick={exportCsv} />
+          )}
+          {data.status === 'complete' && (
+            <ActionBtn icon="data_object" label="Full JSON" onClick={exportJson} />
           )}
           <ActionBtn
             icon="share"

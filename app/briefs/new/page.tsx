@@ -77,6 +77,39 @@ const FOCUS_SUGGESTIONS = [
 
 const DRAFT_KEY = 'beacon:brief:draft'
 
+const TOKEN_BUDGET_PRESETS = [
+  {
+    id: 'standard' as const,
+    label: 'Standard',
+    track: 1000,
+    merge: 1800,
+    hint: 'Groq free tier · 12K TPM',
+  },
+  {
+    id: 'enhanced' as const,
+    label: 'Enhanced',
+    track: 1400,
+    merge: 2400,
+    hint: 'Dev Tier · 25K TPM',
+  },
+  {
+    id: 'max' as const,
+    label: 'Max',
+    track: 1800,
+    merge: 3200,
+    hint: 'Paid tier · 50K+ TPM',
+  },
+  {
+    id: 'custom' as const,
+    label: 'Custom',
+    track: null,
+    merge: null,
+    hint: 'Set your own limits',
+  },
+] as const
+
+type TokenPresetId = (typeof TOKEN_BUDGET_PRESETS)[number]['id']
+
 interface MemoryPreview {
   topic: string
   runCount: number
@@ -158,6 +191,9 @@ export default function NewBriefPage() {
   const [reportStyle, setReportStyle] = useState<'executive' | 'bullet' | 'memo' | 'framework'>('executive')
   const [recurring, setRecurring] = useState(false)
   const [frameworkId, setFrameworkId] = useState<string | null>(null)
+  const [tokenBudgetPreset, setTokenBudgetPreset] = useState<TokenPresetId>('standard')
+  const [trackSynthTokens, setTrackSynthTokens] = useState(1000)
+  const [finalSynthTokens, setFinalSynthTokens] = useState(1800)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [fwOpen, setFwOpen] = useState(false)
   const [fwSearch, setFwSearch] = useState('')
@@ -201,6 +237,9 @@ export default function NewBriefPage() {
           timeframe?: '7d' | '30d' | '90d' | 'all'
           reportStyle?: 'executive' | 'bullet' | 'memo' | 'framework'
           frameworkId?: string
+          tokenBudgetPreset?: string
+          trackSynthTokens?: number
+          finalSynthTokens?: number
         }
         if (d.topic) setTopic(d.topic)
         if (d.objective) setObjective(d.objective)
@@ -211,6 +250,9 @@ export default function NewBriefPage() {
         if (d.timeframe) setTimeframe(d.timeframe)
         if (d.reportStyle) setReportStyle(d.reportStyle)
         if (d.frameworkId) setFrameworkId(d.frameworkId)
+        if (d.tokenBudgetPreset) setTokenBudgetPreset(d.tokenBudgetPreset as TokenPresetId)
+        if (typeof d.trackSynthTokens === 'number') setTrackSynthTokens(d.trackSynthTokens)
+        if (typeof d.finalSynthTokens === 'number') setFinalSynthTokens(d.finalSynthTokens)
       } catch {}
     }
     const t = new URLSearchParams(window.location.search).get('topic')
@@ -228,8 +270,11 @@ export default function NewBriefPage() {
       timeframe,
       reportStyle,
       frameworkId,
+      tokenBudgetPreset,
+      trackSynthTokens,
+      finalSynthTokens,
     }))
-  }, [topic, objective, focus, source, recurring, depth, timeframe, reportStyle, frameworkId])
+  }, [topic, objective, focus, source, recurring, depth, timeframe, reportStyle, frameworkId, tokenBudgetPreset, trackSynthTokens, finalSynthTokens])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -244,6 +289,15 @@ export default function NewBriefPage() {
       }
     }, 600)
   }, [topic])
+
+  function applyTokenBudget(id: TokenPresetId) {
+    setTokenBudgetPreset(id)
+    const p = TOKEN_BUDGET_PRESETS.find((x) => x.id === id)
+    if (p && p.track !== null && p.merge !== null) {
+      setTrackSynthTokens(p.track)
+      setFinalSynthTokens(p.merge)
+    }
+  }
 
   function applyPreset(preset: typeof PRESETS[number]) {
     setTopic(preset.topic)
@@ -289,6 +343,9 @@ export default function NewBriefPage() {
           timeframe,
           reportStyle,
           frameworkId: frameworkId ?? undefined,
+          tokenBudget: depth === 'deep' && tokenBudgetPreset !== 'standard'
+            ? { trackSynthTokens, finalSynthTokens }
+            : undefined,
           userKeys,
         }),
       })
@@ -313,7 +370,12 @@ export default function NewBriefPage() {
 
   const hasMemory = memory !== null && memory !== 'checking' && typeof memory === 'object'
   const mem = hasMemory ? (memory as MemoryPreview) : null
-  const queryEstimate = depth === 'quick' ? '5-7 queries' : '8-10 queries'
+  const isRerun = hasMemory
+  const queryEstimate =
+    depth === 'quick'
+      ? isRerun ? '4-5 queries' : '5-7 queries'
+      : isRerun ? '8-10 queries' : '12-15 queries'
+  const agentCount = depth === 'quick' ? '1 agent' : '3 agents'
   const eta = depth === 'quick' ? '~45s' : '~90s'
   const timeframeLabel = TIMEFRAME_OPTIONS.find((o) => o.value === timeframe)?.label ?? timeframe
   const reportStyleLabel = REPORT_STYLE_OPTIONS.find((o) => o.value === reportStyle)?.label ?? reportStyle
@@ -540,6 +602,77 @@ export default function NewBriefPage() {
                     </div>
                   </div>
 
+                  {/* Token budget — only relevant for deep mode (synthModel calls) */}
+                  {depth === 'deep' && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#737373]"
+                             style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                          Token Budget
+                        </div>
+                        <div className="text-[10px] text-[#4a4a4a]"
+                             style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                          {TOKEN_BUDGET_PRESETS.find(p => p.id === tokenBudgetPreset)?.hint}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        {TOKEN_BUDGET_PRESETS.map((p) => (
+                          <ChoiceChip
+                            key={p.id}
+                            active={tokenBudgetPreset === p.id}
+                            onClick={() => applyTokenBudget(p.id)}
+                          >
+                            {p.label}
+                          </ChoiceChip>
+                        ))}
+                      </div>
+                      {tokenBudgetPreset === 'custom' && (
+                        <div className="grid grid-cols-2 gap-3 mt-1">
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] font-bold tracking-[0.14em] uppercase text-[#737373]"
+                                   style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                              Per-track tokens
+                            </label>
+                            <input
+                              type="number"
+                              min={500}
+                              max={8000}
+                              step={100}
+                              value={trackSynthTokens}
+                              onChange={(e) => setTrackSynthTokens(Math.min(8000, Math.max(500, Number(e.target.value))))}
+                              className="w-full bg-[#0a0a0a] text-[#e5e5e5] text-[12px] px-3 py-2 border border-[#262626] outline-none focus:border-[#f97316] transition-colors"
+                              style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}
+                            />
+                            <div className="text-[9px] text-[#4a4a4a]"
+                                 style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                              Each of 3 agents · 500–8000
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] font-bold tracking-[0.14em] uppercase text-[#737373]"
+                                   style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                              Final merge tokens
+                            </label>
+                            <input
+                              type="number"
+                              min={500}
+                              max={8000}
+                              step={100}
+                              value={finalSynthTokens}
+                              onChange={(e) => setFinalSynthTokens(Math.min(8000, Math.max(500, Number(e.target.value))))}
+                              className="w-full bg-[#0a0a0a] text-[#e5e5e5] text-[12px] px-3 py-2 border border-[#262626] outline-none focus:border-[#f97316] transition-colors"
+                              style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}
+                            />
+                            <div className="text-[9px] text-[#4a4a4a]"
+                                 style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                              validateAndMerge · 500–8000
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="border border-[#262626] bg-[#0a0a0a] px-4 py-4 flex items-center justify-between gap-4">
                     <div>
                       <div className="text-[12px] font-semibold text-[#e5e5e5]"
@@ -571,6 +704,109 @@ export default function NewBriefPage() {
               </div>
             </div>
 
+            {/* Step 04: Research Framework — first-class step, not buried in Advanced */}
+            <div className="border border-[#262626] bg-[#111111] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setFwOpen((o) => !o)}
+                className="w-full flex items-start gap-3 px-5 py-5 sm:px-6 sm:py-6 cursor-pointer hover:bg-white/5 transition-colors text-left"
+              >
+                <div className="w-8 h-8 border border-[#262626] flex items-center justify-center text-[11px] text-[#f97316] shrink-0"
+                     style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>
+                  04
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="text-[14px] font-semibold text-[#e5e5e5] mb-1">Apply a research framework</div>
+                    <span className="text-[11px] text-[#f97316] shrink-0"
+                          style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      {selectedFramework ? selectedFramework.name : fwOpen ? 'Close' : 'Browse'}
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    {selectedFramework
+                      ? selectedFramework.description
+                      : 'Optional. Structure your report around JTBD, SWOT, Problem-Solution Fit, RICE, and 20+ more lenses.'}
+                  </p>
+                </div>
+              </button>
+
+              {fwOpen && (
+                <div className="border-t border-[#262626]">
+                  <div className="border-[#262626] bg-[#0a0a0a]">
+                    <div className="px-4 py-3 border-b border-[#262626]">
+                      <input
+                        type="text"
+                        value={fwSearch}
+                        onChange={(e) => setFwSearch(e.target.value)}
+                        placeholder="Filter frameworks..."
+                        className="w-full bg-[#111111] text-[#e5e5e5] text-[12px] px-3 py-2 border border-[#262626] outline-none placeholder:text-[#4a4a4a] focus:border-[#f97316] transition-colors"
+                        style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                      />
+                    </div>
+                    <div className="overflow-y-auto max-h-[320px] py-1.5">
+                      {!fwSearch.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => { setFrameworkId(null); setFwOpen(false) }}
+                          className={`w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-white/5 ${
+                            frameworkId === null ? 'bg-white/5' : ''
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full border shrink-0 flex items-center justify-center ${
+                            frameworkId === null ? 'border-cyan-400 bg-cyan-400' : 'border-white/20 bg-transparent'
+                          }`}>
+                            {frameworkId === null && <span className="w-1 h-1 rounded-full bg-black block" />}
+                          </span>
+                          <div>
+                            <p className="text-[12px] text-[#e5e5e5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                              No framework
+                            </p>
+                            <p className="text-[10px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                              General-purpose research report
+                            </p>
+                          </div>
+                        </button>
+                      )}
+
+                      {filteredFrameworks && filteredFrameworks.length === 0 && (
+                        <p className="px-4 py-4 text-[11px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                          No frameworks match &ldquo;{fwSearch}&rdquo;
+                        </p>
+                      )}
+
+                      {filteredFrameworks && filteredFrameworks.map((fw) => (
+                        <FrameworkRow
+                          key={fw.id}
+                          fw={fw}
+                          selected={frameworkId === fw.id}
+                          onSelect={() => { setFrameworkId(fw.id); setFwSearch(''); setFwOpen(false) }}
+                        />
+                      ))}
+
+                      {!filteredFrameworks && FRAMEWORK_CATEGORIES.map((cat) => (
+                        <div key={cat}>
+                          <p className="px-4 pt-3 pb-1 text-[9px] font-bold tracking-[0.18em] uppercase text-[#4a4a4a]"
+                             style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                            {cat}
+                          </p>
+                          {FRAMEWORKS.filter((f) => f.category === cat).map((fw) => (
+                            <FrameworkRow
+                              key={fw.id}
+                              fw={fw}
+                              selected={frameworkId === fw.id}
+                              onSelect={() => { setFrameworkId(fw.id); setFwOpen(false) }}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Advanced settings — delivery channel only */}
             <div className="border border-[#262626] bg-[#111111] overflow-hidden">
               <button
                 type="button"
@@ -580,10 +816,10 @@ export default function NewBriefPage() {
                 <div>
                   <div className="text-[12px] font-semibold text-[#e5e5e5]"
                        style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                    Advanced settings
+                    Delivery channel
                   </div>
                   <div className="text-[11px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                    Framework, delivery channel, and deeper control.
+                    Where Beacon sends the finished report.
                   </div>
                 </div>
                 <span className="text-[11px] text-[#f97316]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
@@ -592,117 +828,24 @@ export default function NewBriefPage() {
               </button>
 
               {advancedOpen && (
-                <div className="border-t border-[#262626] px-5 py-5 sm:px-6 flex flex-col gap-5">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <div className="flex flex-col gap-2">
-                      <div className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#737373]"
-                           style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                        Delivery Channel
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        {SOURCES.map((s) => (
-                          <ChoiceChip
-                            key={s.value}
-                            active={source === s.value}
-                            onClick={() => setSource(s.value)}
-                          >
-                            {s.label}
-                          </ChoiceChip>
-                        ))}
-                      </div>
+                <div className="border-t border-[#262626] px-5 py-5 sm:px-6">
+                  <div className="flex flex-col gap-2">
+                    <div className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#737373]"
+                         style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      Delivery Channel
                     </div>
-
-                    <div className="flex flex-col gap-2">
-                      <div className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#737373]"
-                           style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                        Framework
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setFwOpen((o) => !o)}
-                        className="border border-[#262626] bg-[#0a0a0a] px-4 py-3 text-left hover:border-[#f97316] transition-colors"
-                      >
-                        <div className="text-[12px] text-[#e5e5e5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                          {selectedFramework ? selectedFramework.name : 'No framework selected'}
-                        </div>
-                        <div className="text-[10px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                          {selectedFramework ? selectedFramework.description : 'Use Beacon without a formal research lens.'}
-                        </div>
-                      </button>
+                    <div className="flex gap-2 flex-wrap">
+                      {SOURCES.map((s) => (
+                        <ChoiceChip
+                          key={s.value}
+                          active={source === s.value}
+                          onClick={() => setSource(s.value)}
+                        >
+                          {s.label}
+                        </ChoiceChip>
+                      ))}
                     </div>
                   </div>
-
-                  {fwOpen && (
-                    <div className="border border-[#262626] bg-[#0a0a0a]">
-                      <div className="px-4 py-3 border-b border-[#262626]">
-                        <input
-                          type="text"
-                          value={fwSearch}
-                          onChange={(e) => setFwSearch(e.target.value)}
-                          placeholder="Filter frameworks..."
-                          className="w-full bg-[#111111] text-[#e5e5e5] text-[12px] px-3 py-2 border border-[#262626] outline-none placeholder:text-[#4a4a4a] focus:border-[#f97316] transition-colors"
-                          style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                        />
-                      </div>
-                      <div className="overflow-y-auto max-h-[320px] py-1.5">
-                        {!fwSearch.trim() && (
-                          <button
-                            type="button"
-                            onClick={() => { setFrameworkId(null); setFwOpen(false) }}
-                            className={`w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-white/5 ${
-                              frameworkId === null ? 'bg-white/5' : ''
-                            }`}
-                          >
-                            <span className={`w-2 h-2 rounded-full border shrink-0 flex items-center justify-center ${
-                              frameworkId === null ? 'border-cyan-400 bg-cyan-400' : 'border-white/20 bg-transparent'
-                            }`}>
-                              {frameworkId === null && <span className="w-1 h-1 rounded-full bg-black block" />}
-                            </span>
-                            <div>
-                              <p className="text-[12px] text-[#e5e5e5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                                No framework
-                              </p>
-                              <p className="text-[10px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                                General-purpose research report
-                              </p>
-                            </div>
-                          </button>
-                        )}
-
-                        {filteredFrameworks && filteredFrameworks.length === 0 && (
-                          <p className="px-4 py-4 text-[11px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                            No frameworks match &ldquo;{fwSearch}&rdquo;
-                          </p>
-                        )}
-
-                        {filteredFrameworks && filteredFrameworks.map((fw) => (
-                          <FrameworkRow
-                            key={fw.id}
-                            fw={fw}
-                            selected={frameworkId === fw.id}
-                            onSelect={() => { setFrameworkId(fw.id); setFwSearch(''); setFwOpen(false) }}
-                          />
-                        ))}
-
-                        {!filteredFrameworks && FRAMEWORK_CATEGORIES.map((cat) => (
-                          <div key={cat}>
-                            <p className="px-4 pt-3 pb-1 text-[9px] font-bold tracking-[0.18em] uppercase text-[#4a4a4a]"
-                               style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                              {cat}
-                            </p>
-                            {FRAMEWORKS.filter((f) => f.category === cat).map((fw) => (
-                              <FrameworkRow
-                                key={fw.id}
-                                fw={fw}
-                                selected={frameworkId === fw.id}
-                                onSelect={() => { setFrameworkId(fw.id); setFwOpen(false) }}
-                              />
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -734,9 +877,11 @@ export default function NewBriefPage() {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: 'Mode', value: hasMemory ? 'Delta' : 'Baseline' },
+                    { label: 'Agents', value: agentCount },
                     { label: 'ETA', value: eta },
                     { label: 'Queries', value: queryEstimate },
                     { label: 'Scope', value: timeframeLabel },
+                    { label: 'Output', value: reportStyleLabel },
                   ].map((item) => (
                     <div key={item.label} className="border border-[#262626] bg-[#0a0a0a] px-3 py-3">
                       <div className="text-[9px] font-bold tracking-[0.18em] uppercase text-[#737373] mb-1"
@@ -770,10 +915,78 @@ export default function NewBriefPage() {
                     </div>
                   </div>
                   <div className="pt-1 text-[11px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                    {reportStyleLabel} · {recurring ? 'Recurring weekly' : 'One-time run'}
+                    {recurring ? 'Recurring weekly' : 'One-time run'}
                     {selectedFramework ? ` · ${selectedFramework.name}` : ''}
                   </div>
                 </div>
+
+                {/* Multi-agent architecture — shown when depth=deep so the user sees what actually runs */}
+                {depth === 'deep' && (
+                  <div className="border border-[#f97316]/20 bg-[#0a0a0a] px-4 py-4">
+                    <div className="text-[9px] font-bold tracking-[0.18em] uppercase text-[#f97316] mb-3"
+                         style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      Multi-Agent Run
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 text-[11px] text-[#737373]"
+                           style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>
+                        <span className="text-[#4a4a4a]">→</span>
+                        planQueries ({queryEstimate})
+                      </div>
+                      <div className="ml-4 border-l border-[#262626] pl-3 flex flex-col gap-1.5">
+                        {['Exploration', 'Competitive', 'Signals'].map((name) => (
+                          <div key={name} className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#f97316] shrink-0" />
+                              <span className="text-[11px] text-[#e5e5e5]"
+                                    style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                                {name} agent
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-[#4a4a4a]"
+                                  style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>
+                              {trackSynthTokens} tok
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-[11px] text-[#22c55e]"
+                             style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>
+                          <span>✓</span>
+                          validateAndMerge
+                        </div>
+                        <span className="text-[10px] text-[#4a4a4a]"
+                              style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>
+                          {finalSynthTokens} tok
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-[#4a4a4a]"
+                           style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>
+                        <span>⊕</span>
+                        saveMemory{recurring ? ' + sleep(7d)' : ''}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Framework indicator — surfaces the selected framework prominently in the preview */}
+                {selectedFramework && (
+                  <div className="border border-cyan-400/20 bg-[#0a0a0a] px-4 py-3">
+                    <div className="text-[9px] font-bold tracking-[0.18em] uppercase text-cyan-400/70 mb-1"
+                         style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      Framework
+                    </div>
+                    <div className="text-[12px] font-semibold text-[#e5e5e5]"
+                         style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      {selectedFramework.name}
+                    </div>
+                    <div className="text-[11px] text-[#737373] mt-0.5 line-clamp-2"
+                         style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      {selectedFramework.description}
+                    </div>
+                  </div>
+                )}
 
                 <div className="border border-[#262626] bg-[#0a0a0a] px-4 py-4 min-h-[112px]">
                   {memory === 'checking' && (

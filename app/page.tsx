@@ -505,54 +505,138 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── API + Docs ── */}
+        {/* ── API Access — Zero-friction + BYOK ── */}
         <section className="mx-auto max-w-7xl px-6 pb-20">
-          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="border border-white/8 bg-black/25 p-6">
-              <div className="text-[11px] uppercase tracking-[0.24em] text-cyan-300 mb-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                HTTP API
+          <div className="mb-8">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 mb-2" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              API access
+            </div>
+            <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#f3f7f8]">
+              Three ways in. No signup required to start.
+            </h2>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-3">
+
+            {/* Tier 1: Demo key — zero friction */}
+            <div className="border border-white/8 bg-black/25 p-5 flex flex-col gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    No signup
+                  </div>
+                  <span className="border border-cyan-400/20 bg-cyan-400/8 px-2 py-0.5 text-[9px] uppercase tracking-[0.15em] text-cyan-400" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    3 runs/day
+                  </span>
+                </div>
+                <div className="text-[15px] text-[#eef3f4] mb-1">Try it now</div>
+                <p className="text-[11px] leading-[1.6] text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Use the shared public demo token <code className="text-[#cfe7ea]">beacon_demo_key</code> exactly as shown below. No account, no credit card. Runs in quick mode on our API keys.
+                </p>
               </div>
-              <p className="max-w-xl text-[13px] leading-7 text-[#98abaf] mb-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                Trigger research runs, poll status, and read reports from any script, workflow, or agent. Same depth, framework, and memory engine as the dashboard.
-              </p>
-              <pre className="overflow-x-auto border border-white/8 bg-black/30 p-4 text-[12px] leading-6 text-[#d3dddf]">
-                <code style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>{`curl -X POST /api/briefs \\
+              <pre className="overflow-x-auto border border-white/8 bg-black/40 p-3 text-[11px] leading-[1.65] text-[#d3dddf] flex-1">
+                <code style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>{`curl -X POST \\
+  https://beacon-mu-murex.vercel.app/api/demo \\
+  -H "Authorization: Bearer beacon_demo_key" \\
   -H "Content-Type: application/json" \\
-  -d '{
-    "topic": "AI coding agents 2026",
-    "objective": "Compare platforms and pricing",
-    "depth": "deep",
-    "timeframe": "30d",
-    "reportStyle": "executive"
-  }'`}</code>
+  -d '{"topic": "AI coding agents 2026"}'`}</code>
               </pre>
-              <div className="mt-4">
-                <Link
-                  href="/docs/api"
-                  className="inline-flex border border-cyan-400/20 bg-cyan-400/8 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-cyan-300 transition-colors hover:bg-cyan-400/12"
-                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                >
-                  Open API Reference →
-                </Link>
+              <div className="text-[10px] text-[#4a6063]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                Returns a <code className="text-[#9db0b3]">runId</code>. Poll <code className="text-[#9db0b3]">GET /api/demo/:runId</code> every 5s for the report.
               </div>
             </div>
 
-            <div className="border border-white/8 bg-black/25 p-6">
-              <div className="text-[11px] uppercase tracking-[0.24em] text-cyan-300 mb-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                Developer docs
+            {/* Tier 2: BYOK — Groq highlighted */}
+            <div className="border border-cyan-400/25 bg-cyan-400/[0.04] p-5 flex flex-col gap-4 relative">
+              <div className="absolute top-0 right-0 border-l border-b border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[9px] uppercase tracking-[0.15em] text-cyan-300" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                Recommended
               </div>
-              <div className="grid gap-2 md:grid-cols-2">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    Bring your own keys
+                  </div>
+                  <span className="border border-cyan-400/25 bg-cyan-400/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.15em] text-cyan-400" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    10 runs/day
+                  </span>
+                </div>
+                <div className="text-[15px] text-cyan-200 mb-1">Groq + SerpAPI keys</div>
+                <p className="text-[11px] leading-[1.6] text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Pass your own keys in the request body. Unlocks deep mode (3 parallel agents), 10 runs/day. <strong className="text-cyan-300">Groq is free — no credit card.</strong>
+                </p>
+              </div>
+              <pre className="overflow-x-auto border border-cyan-400/15 bg-black/40 p-3 text-[11px] leading-[1.65] text-[#d3dddf] flex-1">
+                <code style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>{`curl -X POST \\
+  https://beacon-mu-murex.vercel.app/api/demo \\
+  -H "Authorization: Bearer beacon_demo_key" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "topic": "AI coding agents 2026",
+    "depth": "deep",
+    "userKeys": {
+      "groqApiKey": "gsk_your_groq_key",
+      "serpApiKey": "your_serpapi_key"
+    }
+  }'`}</code>
+              </pre>
+              <div className="flex gap-3">
+                <a
+                  href="https://console.groq.com/keys"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 border border-cyan-400/25 bg-cyan-400/8 px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-cyan-300 hover:bg-cyan-400/12 transition-colors"
+                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                >
+                  Get free Groq key →
+                </a>
+                <a
+                  href="https://serpapi.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 border border-white/8 px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-[#9db0b3] hover:border-white/15 transition-colors"
+                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                >
+                  Get SerpAPI key →
+                </a>
+              </div>
+            </div>
+
+            {/* Tier 3: Authenticated + docs */}
+            <div className="flex flex-col gap-4">
+              <div className="border border-white/8 bg-black/25 p-5 flex flex-col gap-3">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Full API (authenticated)
+                </div>
+                <div className="text-[15px] text-[#eef3f4]">Unlimited, production-ready</div>
+                <p className="text-[11px] leading-[1.6] text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Sign up to get a session token and call <code className="text-[#9db0b3]">POST /api/briefs</code> with full depth, framework, and memory support. Same engine as the dashboard.
+                </p>
+                <Link
+                  href="/docs/api"
+                  className="self-start inline-flex border border-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-[#c4d4d7] hover:bg-white/5 transition-colors"
+                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                >
+                  API reference →
+                </Link>
+              </div>
+
+              <div className="border border-white/8 bg-black/25 p-5 flex flex-col gap-2">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 mb-1" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Developer docs
+                </div>
                 {DOC_LINKS.map(([label, href]) => (
                   <Link
                     key={href}
                     href={href}
-                    className="border border-white/8 bg-black/20 p-4 transition-colors hover:border-cyan-400/20"
+                    className="border border-white/6 bg-black/15 px-3 py-2 text-[12px] text-[#c4d4d7] hover:border-cyan-400/18 hover:text-cyan-200 transition-colors"
+                    style={{ fontFamily: 'var(--font-space-grotesk)' }}
                   >
-                    <div className="text-[14px] text-[#eef3f4]">{label}</div>
+                    {label}
                   </Link>
                 ))}
               </div>
             </div>
+
           </div>
         </section>
 

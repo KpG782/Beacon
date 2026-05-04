@@ -43,6 +43,8 @@ interface GraphProviderProps {
   defaultEngine?: GraphEngineType
   className?: string
   showToggle?: boolean
+  selectedNodeId?: string | null
+  onSelectNode?: (id: string | null) => void
 }
 
 export function GraphProvider({
@@ -50,14 +52,16 @@ export function GraphProvider({
   defaultEngine = 'sigmajs',
   className = 'w-full h-[500px]',
   showToggle = true,
+  selectedNodeId = null,
+  onSelectNode,
 }: GraphProviderProps) {
   const [engine, setEngine] = useState<GraphEngineType>(defaultEngine)
 
   return (
     <div className={`group relative ${className}`}>
-      {engine === 'threejs' && <ThreeJSAdapter data={data} />}
-      {engine === 'sigmajs' && <SigmajsAdapter data={data} />}
-      {engine === 'cytoscape' && <CytoscapeAdapter data={data} />}
+      {engine === 'threejs' && <ThreeJSAdapter data={data} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />}
+      {engine === 'sigmajs' && <SigmajsAdapter data={data} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />}
+      {engine === 'cytoscape' && <CytoscapeAdapter data={data} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />}
 
       {showToggle && (
         <div className="absolute bottom-4 right-4 z-50 opacity-0 transition-opacity duration-300 group-hover:opacity-100">

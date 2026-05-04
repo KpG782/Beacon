@@ -3,6 +3,11 @@ export interface UserKeys {
   serpApiKey?: string
 }
 
+export interface TokenBudget {
+  trackSynthTokens: number  // max output tokens per track agent (deep mode)
+  finalSynthTokens: number  // max output tokens for validateAndMerge / synthesizeReport
+}
+
 export interface ResearchBrief {
   id?: string
   userId?: string
@@ -17,6 +22,7 @@ export interface ResearchBrief {
   mode?: 'full' | 'delta'
   source?: 'slack' | 'github' | 'discord' | 'dashboard' | 'mcp'
   frameworkId?: string
+  tokenBudget?: TokenBudget
   userKeys?: UserKeys
   webhookUrl?: string
 }

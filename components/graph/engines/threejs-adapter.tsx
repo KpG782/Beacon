@@ -2,7 +2,7 @@
 
 import { Html, Line, OrbitControls, Sparkles } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Mesh } from 'three'
 import { GraphData } from '@/lib/graph/types'
 
@@ -251,9 +251,26 @@ function Scene({
   )
 }
 
-export default function ThreejsAdapter({ data }: { data: GraphData }) {
+export default function ThreejsAdapter({
+  data,
+  selectedNodeId = null,
+  onSelectNode,
+}: {
+  data: GraphData
+  selectedNodeId?: string | null
+  onSelectNode?: (id: string | null) => void
+}) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(data.nodes[0]?.id ?? null)
+
+  useEffect(() => {
+    const nextSelectedId =
+      selectedNodeId && data.nodes.some((node) => node.id === selectedNodeId)
+        ? selectedNodeId
+        : data.nodes[0]?.id ?? null
+
+    setSelectedId(nextSelectedId)
+  }, [data.nodes, selectedNodeId])
 
   const selected = useMemo(
     () => data.nodes.find((node) => node.id === selectedId) ?? data.nodes[0] ?? null,
@@ -269,7 +286,10 @@ export default function ThreejsAdapter({ data }: { data: GraphData }) {
           selectedId={selectedId}
           onHover={setHoveredId}
           onLeave={() => setHoveredId(null)}
-          onSelect={setSelectedId}
+          onSelect={(id) => {
+            setSelectedId(id)
+            onSelectNode?.(id)
+          }}
         />
       </Canvas>
 

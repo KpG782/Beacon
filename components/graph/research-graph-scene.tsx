@@ -55,6 +55,8 @@ function toGraphData(nodes: GraphSceneNode[], links: GraphSceneLink[]): GraphDat
 export default function ResearchGraphScene({
   nodes,
   links,
+  selectedNodeId,
+  onSelect,
 }: {
   nodes: GraphSceneNode[]
   links: GraphSceneLink[]
@@ -65,7 +67,17 @@ export default function ResearchGraphScene({
 
   return (
     <div className="relative h-[360px] overflow-hidden border border-white/8 bg-[#050608] sm:h-[440px] md:h-[540px] lg:h-[620px] xl:h-[680px]">
-      <GraphProvider data={graphData} defaultEngine="sigmajs" className="h-full w-full" />
+      <GraphProvider
+        data={graphData}
+        defaultEngine="sigmajs"
+        className="h-full w-full"
+        selectedNodeId={selectedNodeId}
+        onSelectNode={(id) => {
+          if (!id) return
+          const node = nodes.find((item) => item.id === id)
+          if (node) onSelect(node)
+        }}
+      />
     </div>
   )
 }

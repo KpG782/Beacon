@@ -55,6 +55,25 @@ export async function POST(req: NextRequest) {
     ? body.frameworkId
     : undefined
 
+  // Token budget — let users with higher Groq tier limits raise the output caps.
+  // Clamp to [500, 8000] so a typo can't send a malformed request to Groq.
+  const clampTokens = (v: unknown) =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.min(8000, Math.max(500, Math.round(v))) : undefined
+  const rawBudget = body.tokenBudget && typeof body.tokenBudget === 'object' ? body.tokenBudget : null
+  const tokenBudget = rawBudget
+    ? {
+        trackSynthTokens: clampTokens(rawBudget.trackSynthTokens),
+        finalSynthTokens: clampTokens(rawBudget.finalSynthTokens),
+      }
+    : undefined
+  const validTokenBudget =
+    tokenBudget && (tokenBudget.trackSynthTokens !== undefined || tokenBudget.finalSynthTokens !== undefined)
+      ? {
+          trackSynthTokens: tokenBudget.trackSynthTokens ?? 1000,
+          finalSynthTokens: tokenBudget.finalSynthTokens ?? 1800,
+        }
+      : undefined
+
   // BYOK — accept user-supplied API keys; never log them
   const bodyKeys =
     body.userKeys &&
@@ -90,6 +109,7 @@ export async function POST(req: NextRequest) {
     reportStyle,
     recurring,
     frameworkId,
+    tokenBudget: validTokenBudget,
     userKeys,
     webhookUrl: validWebhookUrl,
   }

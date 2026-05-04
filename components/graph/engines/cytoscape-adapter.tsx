@@ -66,7 +66,15 @@ const GRAPH_STYLESHEET = [
     },
 ]
 
-export default function CytoscapeAdapter({ data }: { data: GraphData }) {
+export default function CytoscapeAdapter({
+  data,
+  selectedNodeId = null,
+  onSelectNode,
+}: {
+  data: GraphData
+  selectedNodeId?: string | null
+  onSelectNode?: (id: string | null) => void
+}) {
   const [selectedId, setSelectedId] = useState<string | null>(data.nodes[0]?.id ?? null)
   const cyRef = useRef<cytoscape.Core | null>(null)
   const selectedIdRef = useRef<string | null>(selectedId)
@@ -104,6 +112,15 @@ export default function CytoscapeAdapter({ data }: { data: GraphData }) {
   }, [selectedId])
 
   useEffect(() => {
+    const nextSelectedId =
+      selectedNodeId && data.nodes.some((node) => node.id === selectedNodeId)
+        ? selectedNodeId
+        : data.nodes[0]?.id ?? null
+
+    setSelectedId(nextSelectedId)
+  }, [data.nodes, selectedNodeId])
+
+  useEffect(() => {
     const cy = cyRef.current
     if (!cy) return
 
@@ -131,6 +148,7 @@ export default function CytoscapeAdapter({ data }: { data: GraphData }) {
       if (!isAlive()) return
       const id = event.target.id()
       setSelectedId(id)
+      onSelectNode?.(id)
       highlightNode(id)
     }
 
@@ -150,6 +168,7 @@ export default function CytoscapeAdapter({ data }: { data: GraphData }) {
       if (!isAlive()) return
       if (event.target !== cy) return
       setSelectedId(null)
+      onSelectNode?.(null)
       clearClasses()
     }
 
@@ -164,7 +183,7 @@ export default function CytoscapeAdapter({ data }: { data: GraphData }) {
       cy.removeListener('mouseout', 'node', onMouseOutNode)
       cy.removeListener('tap', onTapBackground)
     }
-  }, [])
+  }, [onSelectNode])
 
   useEffect(() => {
     const cy = cyRef.current

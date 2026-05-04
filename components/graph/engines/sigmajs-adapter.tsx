@@ -11,7 +11,8 @@ import {
 } from '@react-sigma/core'
 import forceAtlas2 from 'graphology-layout-forceatlas2'
 import { MultiDirectedGraph } from 'graphology'
-import { useEffect, useMemo, useState } from 'react'
+import type Sigma from 'sigma'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { GraphData } from '@/lib/graph/types'
 
 const TYPE_STYLE: Record<string, { color: string; size: number }> = {
@@ -35,6 +36,34 @@ function SigmaInteractions({
 }) {
   const sigma = useSigma()
   const registerEvents = useRegisterEvents()
+  const killedRef = useRef(false)
+
+  useEffect(() => {
+    const markKilled = () => {
+      killedRef.current = true
+    }
+
+    killedRef.current = false
+    sigma.on('kill', markKilled)
+
+    return () => {
+      sigma.off('kill', markKilled)
+      killedRef.current = true
+    }
+  }, [sigma])
+
+  const safeRefresh = (instance: Sigma) => {
+    if (killedRef.current) return
+    if (!instance.getContainer().isConnected) return
+
+    try {
+      instance.refresh()
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('Sigma refresh skipped after renderer teardown.', error)
+      }
+    }
+  }
 
   useEffect(() => {
     registerEvents({
@@ -51,14 +80,14 @@ function SigmaInteractions({
     if (!focus) {
       sigma.setSetting('nodeReducer', null)
       sigma.setSetting('edgeReducer', null)
-      sigma.refresh()
+      safeRefresh(sigma)
       return
     }
 
     if (!graph.hasNode(focus)) {
       sigma.setSetting('nodeReducer', null)
       sigma.setSetting('edgeReducer', null)
-      sigma.refresh()
+      safeRefresh(sigma)
       return
     }
 
@@ -101,7 +130,7 @@ function SigmaInteractions({
       }
     })
 
-    sigma.refresh()
+    safeRefresh(sigma)
   }, [hoveredId, selectedId, sigma])
 
   return null
@@ -142,7 +171,15 @@ function SigmaInspector({
   )
 }
 
-export default function SigmajsAdapter({ data }: { data: GraphData }) {
+export default function SigmajsAdapter({
+  data,
+  selectedNodeId = null,
+  onSelectNode,
+}: {
+  data: GraphData
+  selectedNodeId?: string | null
+  onSelectNode?: (id: string | null) => void
+}) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(data.nodes[0]?.id ?? null)
 
@@ -202,6 +239,15 @@ export default function SigmajsAdapter({ data }: { data: GraphData }) {
     return g
   }, [data.edges, data.nodes])
 
+  useEffect(() => {
+    const nextSelectedId =
+      selectedNodeId && data.nodes.some((node) => node.id === selectedNodeId)
+        ? selectedNodeId
+        : data.nodes[0]?.id ?? null
+
+    setSelectedId(nextSelectedId)
+  }, [data.nodes, selectedNodeId])
+
   return (
     <div className="relative h-full w-full bg-[#050608]">
       <SigmaContainer
@@ -214,7 +260,15 @@ export default function SigmajsAdapter({ data }: { data: GraphData }) {
           zIndex: true,
         }}
       >
-        <SigmaInteractions hoveredId={hoveredId} selectedId={selectedId} onHover={setHoveredId} onSelect={setSelectedId} />
+        <SigmaInteractions
+          hoveredId={hoveredId}
+          selectedId={selectedId}
+          onHover={setHoveredId}
+          onSelect={(id) => {
+            setSelectedId(id)
+            onSelectNode?.(id)
+          }}
+        />
         <ControlsContainer position="bottom-right">
           <ZoomControl />
           <FullScreenControl />

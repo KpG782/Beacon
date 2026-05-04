@@ -15,7 +15,7 @@ import {
   buildMemoryContext,
 } from '@/lib/memory'
 import { FRAMEWORKS_BY_ID } from '@/lib/frameworks'
-import type { ResearchBrief, ResearchReport, QueryPlan, AgentMemory } from '@/lib/types'
+import type { ResearchBrief, ResearchReport, QueryPlan, AgentMemory, TokenBudget } from '@/lib/types'
 
 // ─── Depth-driven config ──────────────────────────────────────────────────────
 // All tunable parameters flow from a single `depth` value so there is one
@@ -32,28 +32,43 @@ interface ResearchConfig {
   wordBudget: string
 }
 
-function researchConfig(depth: 'quick' | 'deep' = 'deep'): ResearchConfig {
+// Maps finalSynthTokens to a matching word-count instruction for the model
+function tokensToWordBudget(tokens: number): string {
+  if (tokens <= 1000) return '400-500'
+  if (tokens <= 1400) return '550-700'
+  if (tokens <= 1800) return '700-900'
+  if (tokens <= 2400) return '900-1100'
+  if (tokens <= 3200) return '1100-1400'
+  return '1400-1800'
+}
+
+function researchConfig(depth: 'quick' | 'deep' = 'deep', budget?: TokenBudget): ResearchConfig {
   if (depth === 'quick') {
+    const fin = budget?.finalSynthTokens ?? 1800
     return {
       multiTrack: false,
       queryCountFresh: '5-7',
       queryCountRerun: '4-5',
       resultsPerQuery: 6,
-      trackSynthTokens: 1800,
-      finalSynthTokens: 1800,
+      trackSynthTokens: budget?.trackSynthTokens ?? 1800,
+      finalSynthTokens: fin,
       sourceLimit: 15,
-      wordBudget: '400-500',
+      wordBudget: tokensToWordBudget(fin),
     }
   }
+  // Default token budget is tuned for Groq free tier (12,000 TPM).
+  // Users on Dev Tier (25K) or paid tiers can raise these via brief.tokenBudget.
+  const track = budget?.trackSynthTokens ?? 1000
+  const fin   = budget?.finalSynthTokens ?? 1800
   return {
     multiTrack: true,
     queryCountFresh: '12-15',
     queryCountRerun: '8-10',
     resultsPerQuery: 10,
-    trackSynthTokens: 1800,
-    finalSynthTokens: 3200,
+    trackSynthTokens: track,
+    finalSynthTokens: fin,
     sourceLimit: 30,
-    wordBudget: '1000-1400',
+    wordBudget: tokensToWordBudget(fin),
   }
 }
 
@@ -94,7 +109,7 @@ export async function researchAgent(brief: ResearchBrief): Promise<ResearchRepor
   // [Context + Memory] Step 2: Generate targeted queries
   const plan = await planQueries(brief, memory)
 
-  const cfg = researchConfig(brief.depth)
+  const cfg = researchConfig(brief.depth, brief.tokenBudget)
   const seenSet = new Set(memory?.seenUrls ?? [])
   let allRaw: SerpBlock[]
   let report: ResearchReport
@@ -200,7 +215,7 @@ async function planQueries(brief: ResearchBrief, memory: AgentMemory | null): Pr
   // [Context] [Memory] — scoutModel expands topic into targeted, engine-specific queries
 
   const start = Date.now()
-  const cfg = researchConfig(brief.depth)
+  const cfg = researchConfig(brief.depth, brief.tokenBudget)
   const memoryContext = buildMemoryContext(memory)
   const isRerun = !!(memory && memory.runCount > 0)
   const framework = brief.frameworkId ? FRAMEWORKS_BY_ID.get(brief.frameworkId) : null
@@ -286,21 +301,33 @@ async function runSerpQuery(
   numResults = 8
 ) {
   'use step'
-  // [Context] [Harness] — one SerpAPI call per step; idempotent, checkpointed
+  // [Context] [Harness] — up to 3 attempts per query; empty results trigger a retry
+  // so one bad SerpAPI response never kills the downstream agents
 
   const start = Date.now()
   const scout = createScoutModel()
-  const { toolResults } = await generateText({
-    model: scout,
-    tools: { serpapi_search: createSerpApiTool(serpApiKey) },
-    toolChoice: 'required',
-    prompt: `Search: "${q}" using ${engine} engine. Return ${numResults} results.`,
-    maxSteps: 1,
-  })
+  let result: SerpBlock = { engine, query: q, results: [] }
 
-  const result = toolResults[0]?.result ?? { engine, query: q, results: [] }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const { toolResults } = await generateText({
+        model: scout,
+        tools: { serpapi_search: createSerpApiTool(serpApiKey) },
+        toolChoice: 'required',
+        prompt: `Search: "${q}" using ${engine} engine. Return ${numResults} results.`,
+        maxSteps: 1,
+      })
+      const r = (toolResults[0]?.result ?? { engine, query: q, results: [] }) as SerpBlock
+      if ((r.results?.length ?? 0) > 0) { result = r; break }
+      if (attempt < 2) console.warn(`[beacon:self-heal] runSerpQuery empty results attempt ${attempt + 1} q="${q}"`)
+    } catch (err) {
+      console.warn(`[beacon:self-heal] runSerpQuery threw attempt ${attempt + 1} q="${q}":`, String(err))
+      if (attempt === 2) break
+    }
+  }
+
   console.log(
-    `[beacon:step] runSerpQuery q="${q}" engine=${engine} results=${(result as { results?: unknown[] }).results?.length ?? 0} ms=${Date.now() - start}`
+    `[beacon:step] runSerpQuery q="${q}" engine=${engine} results=${result.results?.length ?? 0} ms=${Date.now() - start}`
   )
   return result
 }
@@ -335,16 +362,14 @@ async function synthesizeTrack(
   // [Context] — intermediate synthesis for one research angle; feeds validateAndMerge
 
   const start = Date.now()
-  const cfg = researchConfig(brief.depth)
+  const cfg = researchConfig(brief.depth, brief.tokenBudget)
   const meta = TRACK_META[trackName]
   const runCount = (memory?.runCount ?? 0) + 1
   const isDelta = runCount > 1
   const synth = createSynthModel(brief.userKeys?.groqApiKey)
   const context = compressSerpResults(trackResults, { maxResults: cfg.resultsPerQuery * (trackResults.length || 5) })
 
-  const { text } = await generateText({
-    model: synth,
-    system: `You are a research analyst writing one section of a multi-agent report.
+  const systemPrompt = `You are a research analyst writing one section of a multi-agent report.
 
 Track: ${meta.label}
 Scope: ${meta.instruction}
@@ -363,13 +388,34 @@ Format:
 ...
 
 ## Sources
-[1] Title — URL`,
-    prompt: `Topic: ${brief.topic}
+[1] Title — URL`
+
+  const userPrompt = `Topic: ${brief.topic}
 
 Evidence:
-${context}`,
-    maxTokens: cfg.trackSynthTokens,
-  })
+${context}`
+
+  // [Harness] Retry once if the model returns a suspiciously short response
+  let text = ''
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await generateText({
+      model: synth,
+      system: systemPrompt,
+      prompt: userPrompt,
+      maxTokens: cfg.trackSynthTokens,
+    })
+    text = response.text
+    if (text.trim().length >= 120) break
+    console.warn(
+      `[beacon:self-heal] synthesizeTrack track="${trackName}" short output (${text.length} chars) attempt ${attempt + 1}, retrying`
+    )
+  }
+
+  // [Harness] Fallback: guarantees validateAndMerge always receives content from all 3 tracks
+  if (text.trim().length < 50) {
+    text = `## ${meta.label}\n\nInsufficient evidence returned for this track. The validator will note the coverage gap.\n`
+    console.error(`[beacon:self-heal] synthesizeTrack track="${trackName}" using fallback placeholder`)
+  }
 
   console.log(
     `[beacon:step] synthesizeTrack track="${trackName}" topic="${brief.topic}" ms=${Date.now() - start}`
@@ -392,7 +438,7 @@ async function validateAndMerge(
   // then writes one authoritative unified report
 
   const start = Date.now()
-  const cfg = researchConfig(brief.depth)
+  const cfg = researchConfig(brief.depth, brief.tokenBudget)
   const runCount = (memory?.runCount ?? 0) + 1
   const isDelta = runCount > 1
   const framework = brief.frameworkId ? FRAMEWORKS_BY_ID.get(brief.frameworkId) : null
@@ -404,9 +450,12 @@ async function validateAndMerge(
     framework: 'Structured tightly around the selected framework.',
   }[brief.reportStyle ?? 'executive']
 
-  const { text, usage } = await generateText({
-    model: synth,
-    system: `You are a senior research analyst completing a multi-agent investigation.
+  // Truncate each track to ~2400 chars (~600 tokens) to cap prompt input tokens
+  // and keep the total request well under the Groq TPM limit
+  const truncate = (s: string, max = 2400) =>
+    s.length > max ? s.slice(0, max) + '\n[truncated]' : s
+
+  const systemPrompt = `You are a senior research analyst completing a multi-agent investigation.
 
 Three specialized agents independently researched the same topic from different angles.
 Your job: cross-validate their findings, flag contradictions or cross-agent confirmations, then produce one authoritative report.
@@ -420,7 +469,7 @@ ${framework ? `\nOutput framework: ${framework.name}\n${framework.synthesisHint}
 
 Format:
 ${isDelta ? '## What Changed Since Last Run\n[3-4 specific bullets on key changes]\n\n' : ''}## Cross-Agent Validation
-[1-2 bullets only: facts confirmed by multiple agents, or contradictions between agents. Skip section entirely if nothing notable.]
+[1-2 bullets only: facts confirmed by multiple agents, or contradictions between agents. Skip if nothing notable.]
 
 ## Executive Summary
 [3-4 sentences integrating all three angles]
@@ -431,7 +480,6 @@ ${isDelta ? '## What Changed Since Last Run\n[3-4 specific bullets on key change
 3. [Specific finding] [3]
 4. [Specific finding] [4]
 5. [Specific finding] [5]
-6. [Specific finding] [6]
 
 ## Competitive Landscape
 [From competitive track — be specific about players, pricing, positioning]
@@ -443,25 +491,58 @@ ${isDelta ? '## What Changed Since Last Run\n[3-4 specific bullets on key change
 [1] Title — URL
 [2] Title — URL
 
-Rules: Cite every factual claim with [N]. ${cfg.wordBudget} words. No vague generalities.`,
-    prompt: `Topic: ${brief.topic}
+Rules: Cite every factual claim with [N]. ${cfg.wordBudget} words. No vague generalities.`
+
+  const userPrompt = `Topic: ${brief.topic}
 Run #${runCount}
 Objective: ${brief.objective || 'Surface the most important findings.'}
 ${brief.focus ? `Focus areas: ${brief.focus}` : ''}
 
 --- AGENT 1: Landscape & Recent Developments ---
-${tracks.exploration}
+${truncate(tracks.exploration)}
 
 --- AGENT 2: Competitive Intelligence ---
-${tracks.competitive}
+${truncate(tracks.competitive)}
 
 --- AGENT 3: Community & Technical Signals ---
-${tracks.signals}`,
-    maxTokens: cfg.finalSynthTokens,
-  })
+${truncate(tracks.signals)}`
+
+  // [Harness] Rate-limit-aware retry: Groq returns a "retry after Xs" message on TPM errors.
+  // Sleep that duration + 1s buffer, then retry with a smaller output budget as a fallback.
+  let text = ''
+  let totalTokens = 0
+  let mergeTokens = cfg.finalSynthTokens
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const { text: t, usage } = await generateText({
+        model: synth,
+        system: systemPrompt,
+        prompt: userPrompt,
+        maxTokens: mergeTokens,
+      })
+      text = t
+      totalTokens = usage.totalTokens
+      break
+    } catch (err) {
+      const msg = String(err)
+      const isRateLimit = msg.includes('Rate limit') || msg.includes('rate_limit') || msg.includes('TPM')
+      if (isRateLimit && attempt < 2) {
+        // Parse "Please try again in Xs" from the Groq error message
+        const retryMatch = msg.match(/try again in ([\d.]+)s/)
+        const waitMs = retryMatch ? Math.ceil(parseFloat(retryMatch[1]) * 1000) + 1200 : 8000
+        console.warn(
+          `[beacon:self-heal] validateAndMerge rate limit hit attempt ${attempt + 1}, sleeping ${waitMs}ms then retrying`
+        )
+        await new Promise((resolve) => setTimeout(resolve, waitMs))
+        mergeTokens = Math.max(1000, mergeTokens - 300)
+      } else {
+        throw err
+      }
+    }
+  }
 
   console.log(
-    `[beacon:step] validateAndMerge topic="${brief.topic}" run=${runCount} tokens=${usage.totalTokens} ms=${Date.now() - start}`
+    `[beacon:step] validateAndMerge topic="${brief.topic}" run=${runCount} tokens=${totalTokens} ms=${Date.now() - start}`
   )
 
   const sources = allRaw
@@ -501,7 +582,7 @@ async function synthesizeReport(
   // [Context] [Memory]
 
   const start = Date.now()
-  const cfg = researchConfig(brief.depth)
+  const cfg = researchConfig(brief.depth, brief.tokenBudget)
   const context = compressSerpResults(serpResults, { maxResults: cfg.sourceLimit })
   const runCount = (memory?.runCount ?? 0) + 1
   const isDelta = runCount > 1
