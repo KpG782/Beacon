@@ -4,23 +4,33 @@ export default function DocsSecurityPage() {
   return (
     <DocsShell
       eyebrow="Security"
-      title="Current security posture and operational boundaries."
-      description="Beacon is stronger than before on account privacy and credential separation, but this page is intentionally direct about what is already hardened and what is still product-maturity work."
+      title="Current security posture, privacy controls, and known governance gaps."
+      description="Beacon is materially stronger than its initial hackathon baseline, but this page is intentionally direct about the difference between implemented controls and a finished compliance program."
       navItems={DOCS_NAV}
     >
       <DocsSection eyebrow="Current Strengths" title="What Beacon already does">
         <div className="grid gap-3 md:grid-cols-2">
-          <DocsCard title="Per-account privacy" body="Authenticated briefs, memory, and logs are now isolated by Clerk user ID in the web app." />
-          <DocsCard title="Trial isolation" body="Public trial data is isolated by session cookie and IP-based allowance instead of global shared state." />
-          <DocsCard title="BYOK support" body="User-supplied Groq and SerpAPI keys are accepted for private brief runs and are not logged intentionally." />
-          <DocsCard title="MCP bearer auth" body="External MCP clients can authenticate with a dedicated token instead of browser cookies." />
+          <DocsCard title="Per-account privacy" body="Authenticated briefs, memory, and logs are scoped by Clerk user ID in the web app so one signed-in account does not see another account's data." />
+          <DocsCard title="Trial isolation" body="Public trial usage is separated by session cookie and IP-based allowance instead of a single global shared state." />
+          <DocsCard title="Encrypted BYOK storage" body="User-supplied Groq and SerpAPI keys can be stored through an authenticated route and are encrypted before being written to Redis." />
+          <DocsCard title="MCP bearer auth" body="External MCP clients can authenticate with a dedicated token instead of relying on browser cookies." />
         </div>
       </DocsSection>
 
-      <DocsSection eyebrow="Current Limits" title="What is not yet a finished security platform">
+      <DocsSection eyebrow="Privacy Controls" title="What supports a more credible privacy posture">
         <div className="grid gap-3 md:grid-cols-2">
-          <DocsCard title="No formal whitepaper" body="This page documents behavior, but Beacon does not yet ship a full security whitepaper or audit package." />
-          <DocsCard title="Non-web identity mapping" body="Slack or similar chat-bot channels still need stronger user-identity binding if they should inherit the same privacy model." />
+          <DocsCard title="Retention windows are defined" body="Current implementation defines 30-day TTLs for memory and brief records and a 90-day TTL for saved provider keys. That is better than indefinite retention, even though it is not yet a full retention-control suite." />
+          <DocsCard title="User-visible data review" body="Authenticated users can review memory, briefs, logs, and stored-key status through product surfaces, which supports basic access and deletion workflows." />
+          <DocsCard title="Key material is masked in UI" body="The key-management API never returns raw saved credentials to the browser after storage; the UI only receives masked status." />
+        </div>
+      </DocsSection>
+
+      <DocsSection eyebrow="Current Limits" title="What is not yet a finished security or compliance platform">
+        <div className="grid gap-3 md:grid-cols-2">
+          <DocsCard title="No formal audit package" body="Beacon still does not ship a formal security whitepaper, penetration test report, SOC package, or enterprise DPA workflow." />
+          <DocsCard title="Non-web identity mapping" body="Slack or similar chat-bot channels still need stronger user identity binding if they should inherit the same privacy guarantees as the signed-in web app." />
+          <DocsCard title="Log governance needs another pass" body="Operational logs are retained as a rolling capped list rather than a formal retention schedule with documented deletion, minimization, and legal-hold controls." />
+          <DocsCard title="Governance process is still operator-led" body="Privacy requests, incident handling, and transfer assessments still depend on product/operator process rather than a fully built in-app governance workflow." />
         </div>
       </DocsSection>
 

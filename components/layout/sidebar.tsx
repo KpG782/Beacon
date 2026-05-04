@@ -12,6 +12,7 @@ const NAV = [
   { href: '/graph',      icon: 'hub',        label: 'Research Graph' },
   { href: '/memory',     icon: 'database',   label: 'Memory Bank' },
   { href: '/settings',   icon: 'settings',   label: 'Settings' },
+  { href: '/profile',    icon: 'person',     label: 'Profile & Keys' },
   { href: '/logs',       icon: 'terminal',   label: 'System Logs' },
 ]
 
@@ -152,21 +153,32 @@ export default function Sidebar() {
         ))}
       </div>
 
-      {/* User + expand toggle when collapsed */}
+      {/* Profile link + expand toggle when collapsed */}
       <div
         className={cn(
           'pt-4 mt-2 border-t border-white/5 flex items-center gap-3',
           open ? 'px-6' : 'px-0 justify-center flex-col gap-2'
         )}
       >
-        <div className="w-8 h-8 shrink-0 rounded-full bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center">
-          <span className="material-symbols-outlined text-cyan-400 text-[16px]">person</span>
-        </div>
-        {open && (
-          <div className="text-[11px] text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-            Op. ID: 884-A
+        <Link
+          href="/profile"
+          onClick={handleNavClick}
+          title={!open ? 'Profile & Keys' : undefined}
+          className={cn(
+            'flex items-center gap-3 transition-colors hover:text-cyan-300',
+            open ? 'min-w-0' : 'justify-center'
+          )}
+        >
+          <div className="w-8 h-8 shrink-0 rounded-full bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center">
+            <span className="material-symbols-outlined text-cyan-400 text-[16px]">person</span>
           </div>
-        )}
+          {open && (
+            <div className="min-w-0" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              <div className="text-[11px] text-[#d7e2e4]">Profile & Keys</div>
+              <div className="text-[10px] text-[#849495]">Manage API keys, MCP access, and account setup</div>
+            </div>
+          )}
+        </Link>
         {!open && (
           <button
             onClick={toggle}

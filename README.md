@@ -1,286 +1,359 @@
-# 🔦 Beacon
+# Beacon
 
-> **Autonomous web research agent with persistent memory** — runs deep SerpAPI investigations while you're offline, remembers what it learned, supports **47 preselected research frameworks**, delivers delta reports showing exactly what changed, and ships results to Slack, GitHub PRs, and a live dashboard.
+> Durable web research agent with persistent memory, framework-guided deep research, delta reruns, and agent-facing delivery surfaces.
 
-Built for the [Vercel Zero to Agent Hackathon](https://community.vercel.com/hackathons/zero-to-agent) · April 24 – May 4, 2026
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/beacon)
+Built by [Ken Patrick Garcia](https://www.kenbuilds.tech) for the [Vercel Zero to Agent Hackathon](https://community.vercel.com/hackathons/zero-to-agent) 2026.
 
 ---
 
-## The Problem
+## What Beacon Is
 
-Knowledge workers spend **4–8 hours/week** on manual web research. AI agents exist — but they reset to zero every session. ChatGPT Deep Research doesn't remember what it found last week. It re-researches everything from scratch, delivers nowhere useful, and can't tell you what actually changed.
+Beacon is for research questions that need more than one pass.
 
-**Two problems in one:**
-1. No persistent memory across sessions — agents always start from zero
-2. No delivery — findings stay inside the chat, never reach Slack or GitHub
+Instead of re-running the same search from scratch every time, Beacon:
+- plans targeted web research
+- applies one of **47 research frameworks**
+- stores topic memory across runs
+- surfaces **what changed since last run**
+- exposes the result through the app, MCP, HTTP, and chat-oriented entry points
 
-## The Solution
+The core product idea is simple:
 
-Beacon is a **durable research agent with persistent cross-session memory** that:
-
-1. Accepts a research brief from **Slack, GitHub, Discord, or the dashboard**
-2. Applies one of **47 preselected research frameworks** (discovery, prioritization, systems, strategy, validation, AI/deep research)
-3. **Loads memory** — checks what it already knows about this topic from previous runs
-4. Fans out **SerpAPI queries** focused only on finding NEW information
-5. Synthesizes a **delta report** — "here's what changed since last week"
-6. **Saves what it learned** back to memory — compounds over time
-7. Delivers to **Slack thread**, **GitHub PR comment**, or **live dashboard**
-8. **Sleeps and reruns weekly** — gets smarter every run, never resets
+> Run once for the baseline. Run again for what changed.
 
 ---
 
-## Edge Over ChatGPT Deep Research
+## Best Use Cases
 
-| Feature | ChatGPT Deep Research | Beacon |
+- **Hackathon validation**: pressure-test whether a problem is real before you build.
+- **Market tracking**: monitor a category, competitor, or platform weekly.
+- **Framework-led research**: apply Jobs To Be Done, Problem / Solution Fit, SWOT, RICE, PESTLE, and more to the same topic.
+- **Reusable team memory**: keep sources, facts, and summaries attached to the topic instead of losing them in chat history.
+
+---
+
+## Current Product Shape
+
+### Public trial
+- `/trial`
+- no signup required
+- up to **3 sample briefs**
+- session-scoped data isolation
+- optimized for fast evaluation
+
+### Private app
+- Clerk-authenticated
+- signed-in users can create account-scoped briefs
+- private runs require valid **Groq** and **SerpAPI** keys
+- keys can be stored through the authenticated profile/settings flow
+
+### Delivery and access surfaces
+- Dashboard
+- Memory Bank
+- Research Graph
+- HTTP API
+- MCP transport
+- Slack intake
+- GitHub webhook route
+- Discord webhook route currently exists but is intentionally disabled pending dependency hardening
+
+### Webhook delivery
+- `POST /api/briefs` accepts optional `webhookUrl`
+- completed runs can POST their final payload to that callback URL
+- delivery state is persisted on the brief record as `pending`, `delivered`, or `failed`
+
+---
+
+## How It Works
+
+1. A user submits a topic, objective, focus area, and optional framework.
+2. Beacon loads prior memory for that topic.
+3. Beacon plans search queries with the scout model.
+4. In `deep` mode, Beacon splits research across parallel tracks.
+5. Search results are synthesized into a cited report.
+6. Facts, URLs, and summaries are saved back into memory.
+7. Future runs reuse the stored state and lead with deltas instead of repeating the baseline.
+
+For recurring runs, Beacon can sleep and rerun later without burning compute during the wait.
+
+---
+
+## Why Beacon Is Different
+
+| Capability | Generic Chat Research | Beacon |
 |---|---|---|
-| Persistent memory across sessions | ❌ Resets every time | ✅ Compounds every run |
-| Delta reports (what changed) | ❌ Full reset every time | ✅ "Since last week: X changed" |
-| Delivers to Slack | ❌ | ✅ |
-| Delivers to GitHub PR | ❌ | ✅ |
-| Scheduled weekly reruns | ❌ | ✅ |
-| Survives browser close | ❌ | ✅ Durable workflow |
-| Live progress dashboard | ❌ | ✅ v0-generated |
-| Visible agent memory | ❌ | ✅ Dashboard memory panel |
-| Research framework library | ❌ Generic | ✅ 47 preselected frameworks |
+| Cross-session topic memory | Usually resets | Persists by topic and user |
+| Delta reruns | Repeats baseline | Focuses on changes |
+| Research frameworks | Usually generic | 47 framework-guided modes |
+| Visible provenance | Limited | Sources, memory, graph, logs |
+| Recurring runs | Manual | Durable workflow + sleep |
+| Webhook completion callback | Rare | Supported on private briefs |
 
 ---
 
-## Track Coverage (All Three)
+## Architecture
 
-| Track | How Beacon Uses It |
-|---|---|
-| 🔁 **Vercel Workflow SDK** | Durable research jobs via `'use workflow'` / `'use step'`; `sleep('7 days')` for recurring monitors; memory persists across sleep cycles |
-| 🎨 **v0 + MCPs** | v0-generated dashboard with memory visualization panel; SerpAPI as AI SDK tool; Beacon exposes its own MCP server for Claude Desktop / Cursor |
-| 💬 **Chat SDK** | Single `onNewMention` handler on Slack + GitHub + Discord; delta reports posted with run count ("Research run #3 — here's what changed") |
+Beacon is organized around three layers:
 
----
+- **Context**: query planning, search fanout, synthesis
+- **Memory**: durable per-topic state in Upstash Redis
+- **Harness**: workflow durability, retry-safe orchestration, fallbacks
 
-## 100% Free Stack
+Important files:
 
-| Tool | Cost | Notes |
-|---|---|---|
-| Next.js 16.2.4 on Vercel Hobby | **Free** | Workflow SDK included on Hobby |
-| Vercel Workflow SDK | **Free** | 50,000 steps/month on Hobby |
-| Groq (Llama 4 Scout + Llama 3.3 70B) | **Free tier** | console.groq.com |
-| SerpAPI | **Free** | Your existing key |
-| v0 | **Free** | Your existing credits |
-| Upstash Redis | **Free tier** | Memory store + Chat SDK state |
-| Chat SDK | **Free** | npm package |
-
-**Total cost to ship: $0**
+- `workflows/research.ts` — workflow orchestration
+- `lib/memory.ts` — topic memory layer
+- `lib/brief-store.ts` — brief persistence, sync, and webhook delivery
+- `lib/groq.ts` — model configuration
+- `lib/serpapi.ts` — search tool
+- `app/api/briefs/route.ts` — private briefs API
+- `app/api/trial/route.ts` — public sample-brief API
+- `app/api/mcp/[...transport]/route.ts` — MCP surface
 
 ---
 
-## Stack Versions
+## Current Surfaces
 
-| Layer | Package | Version |
-|---|---|---|
-| Framework | `next` | **16.2.4** |
-| Styling | `tailwindcss` | **v4** |
-| Workflow | `workflow` | latest GA |
-| AI SDK | `ai` | 4.x |
-| Groq Provider | `@ai-sdk/groq` | latest |
-| Chat SDK | `chat` | latest |
-| Slack Adapter | `@chat-adapter/slack` | latest |
-| GitHub Adapter | `@chat-adapter/github` | latest |
-| Discord Adapter | `@chat-adapter/discord` | latest |
-| Chat State | `@chat-adapter/state-redis` | latest |
-| MCP Server | `mcp-handler` | latest |
-| Redis Client | `@upstash/redis` | latest |
-| Validation | `zod` | latest |
-| Runtime | Node.js | ≥ 18.17 |
+### Homepage
+- `app/page.tsx`
+- positions Beacon around validation, tracking, memory, graph provenance, and frameworks
+
+### Trial flow
+- `app/trial/page.tsx`
+- best first-touch experience for non-authenticated users
+
+### Dashboard
+- `app/dashboard/page.tsx`
+- account-scoped brief history and status
+
+### Memory Bank
+- `app/memory/page.tsx`
+- topic memories plus export and source inspection
+
+### Research Graph
+- `app/graph/page.tsx`
+- visual provenance and memory relationships
+
+### Docs
+- `/docs`, `/docs/api`, `/docs/mcp`, `/docs/security`, `/docs/roadmap`, etc.
 
 ---
 
-## Project Structure
+## API Overview
 
-```
-beacon/
-├── AGENTS.md
-├── app/
-│   ├── layout.tsx
-│   ├── page.tsx                      # Landing page
-│   ├── briefs/
-│   │   ├── new/page.tsx              # New brief + framework picker
-│   │   └── [id]/
-│   │       └── page.tsx              # Live brief + report
-│   ├── dashboard/page.tsx            # Dashboard
-│   ├── memory/page.tsx               # Memory explorer
-│   ├── logs/page.tsx                 # Logs
-│   └── api/
-│       ├── briefs/
-│       │   ├── route.ts              # POST → start / GET → list
-│       │   └── [id]/
-│       │       └── route.ts          # GET status + report + memory
-│       ├── workflows/
-│       │   └── research/
-│       │       └── route.ts          # WDK workflow endpoint
-│       ├── webhooks/
-│       │   └── slack/route.ts
-│       └── mcp/
-│           └── [...transport]/
-│               └── route.ts          # Beacon-as-MCP-server
-├── workflows/
-│   └── research.ts                   # Core durable workflow
-├── lib/
-│   ├── groq.ts                       # Groq model instances
-│   ├── serpapi.ts                    # SerpAPI tool + helpers
-│   ├── memory.ts                     # ← Persistent agent memory layer
-│   ├── chat-bot.ts                   # Chat SDK bot
-│   └── types.ts                      # Shared types
-├── components/
-│   ├── layout/*                      # Shell components
-│   ├── graph/*                       # Graph view
-│   ├── landing/*                     # Landing visuals
-│   └── ui/*                          # Shared UI primitives
-├── proxy.ts
-├── next.config.ts
-├── tailwind.config.ts
-└── .env.local.example
+### Trial API
+
+Public sample-brief endpoint:
+
+```http
+POST /api/trial
 ```
 
+Use this for no-signup evaluation. It is rate-limited and session-scoped.
+
+Example:
+
+```bash
+curl -X POST http://localhost:3000/api/trial \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "Validate a hackathon idea: AI expense categorization for freelancers",
+    "objective": "Determine whether the problem is real and whether people already complain about it",
+    "focus": "problem evidence, alternatives, market timing",
+    "frameworkId": "problem-solution-fit",
+    "depth": "quick",
+    "timeframe": "30d",
+    "reportStyle": "framework"
+  }'
+```
+
+### Private briefs API
+
+Authenticated endpoint:
+
+```http
+POST /api/briefs
+GET /api/briefs
+GET /api/briefs/[id]
+```
+
+Private runs require:
+- active Clerk session
+- valid Groq key
+- valid SerpAPI key
+
+Optional request fields include:
+- `frameworkId`
+- `depth`
+- `timeframe`
+- `reportStyle`
+- `recurring`
+- `webhookUrl`
+
+The private API is documented further in [`/docs/api`](./app/docs/api/page.tsx).
+
 ---
 
-## How It Works End to End
+## MCP Surface
 
+Beacon exposes MCP over:
+
+```text
+/api/mcp/[...transport]
 ```
-Run 1 — User in Slack: "@beacon research Vercel vs Cloudflare, weekly"
-        ↓
-Chat SDK → POST /api/briefs → trigger(researchAgent, brief)
-        ↓
-  [Step 1] loadMemory()        No memory yet — fresh run
-  [Step 2] planQueries()       Scout: cover all angles (full research)
-  [Step 3] runSerpQueries()    SerpAPI: Google + News + Scholar
-  [Step 4] synthesizeReport()  70B: full cited report
-  [Step 5] saveMemory()        Stores: URLs seen, key facts, summary
-  [Step 6] sleep('7 days')     Zero compute while sleeping
-        ↓
-Slack: "Research run #1 complete — full report attached"
 
-────────────────── 7 days later ──────────────────
+Current MCP surface includes:
+- **10 tools**
+- **3 resources**
+- **3 prompts**
 
-Run 2 — Workflow wakes from sleep, reruns automatically
-        ↓
-  [Step 1] loadMemory()        Loads: 23 URLs seen, 8 key facts known
-  [Step 2] planQueries()       Scout: "find what CHANGED since [date]"
-  [Step 3] runSerpQueries()    SerpAPI: skips known URLs, finds new ones
-  [Step 4] synthesizeReport()  70B: delta report — only what changed
-  [Step 5] saveMemory()        Updates memory: now 31 URLs, 12 facts
-  [Step 6] sleep('7 days')     Back to sleep
-        ↓
-Slack: "Research run #2 — here's what changed since last week: [delta]"
-```
+Representative tools:
+- `research_brief`
+- `get_run_status`
+- `get_run_report`
+- `get_topic_memory`
+- `get_topic_delta`
+- `compare_topics`
+- `export_topic`
+- `list_frameworks`
+
+Authentication uses bearer token validation against:
+- `BEACON_MCP_TOKEN`
+- or `BEACON_SESSION_TOKEN` fallback
 
 ---
 
 ## Environment Variables
 
 ```env
-# Groq — free at console.groq.com/keys
-GROQ_API_KEY=gsk_xxxxxxxxxxxx
+# Core providers
+GROQ_API_KEY=
+SERPAPI_API_KEY=
 
-# SerpAPI — you already have this
-SERPAPI_API_KEY=your_serpapi_key
+# Auth
+CLERK_SECRET_KEY=
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 
-# Slack
-SLACK_BOT_TOKEN=xoxb-...
-SLACK_SIGNING_SECRET=...
+# Upstash Redis
+UPSTASH_REDIS_URL=
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
 
-# GitHub
-GITHUB_APP_ID=...
-GITHUB_PRIVATE_KEY=...
-GITHUB_WEBHOOK_SECRET=...
+# Session / encryption / MCP
+BEACON_SESSION_TOKEN=
+BEACON_MCP_TOKEN=
 
-# Discord
-DISCORD_TOKEN=...
-DISCORD_PUBLIC_KEY=...
+# Optional chat integrations
+SLACK_BOT_TOKEN=
+SLACK_SIGNING_SECRET=
+GITHUB_APP_ID=
+GITHUB_PRIVATE_KEY=
+GITHUB_WEBHOOK_SECRET=
+DISCORD_TOKEN=
+DISCORD_PUBLIC_KEY=
 
-# Upstash Redis (ioredis URL) — required for Chat SDK state
-UPSTASH_REDIS_URL=rediss://default:...@....upstash.io:6379
-
-# Upstash Redis REST — required for memory + brief persistence
-UPSTASH_REDIS_REST_URL=https://...upstash.io
-UPSTASH_REDIS_REST_TOKEN=...
-
-# Local dev
+# Local / deployment base URL
 VERCEL_URL=http://localhost:3000
 ```
 
-**Notes**
-- `UPSTASH_REDIS_URL` and `UPSTASH_REDIS_REST_*` are different and both are required for full functionality.
-- Slack webhook route requires `SLACK_BOT_TOKEN` + `SLACK_SIGNING_SECRET`.
+Notes:
+- `UPSTASH_REDIS_URL` and `UPSTASH_REDIS_REST_*` are both used.
+- `BEACON_SESSION_TOKEN` is required for encrypted user-key storage.
+- Discord env vars may be present even though the Discord webhook route is not currently enabled for production use.
 
 ---
 
-## Quick Start
+## Local Development
 
 ```bash
-git clone https://github.com/yourusername/beacon
-cd beacon
+git clone https://github.com/KpG782/Beacon.git
+cd Beacon
 npm install
 cp .env.local.example .env.local
-# Fill in all required keys in .env.local
+```
 
+Run the app:
+
+```bash
 # Terminal 1
 npm run dev
 
 # Terminal 2
 npx workflow dev
+```
 
-# Test a research run
-curl -X POST http://localhost:3000/api/briefs \
-  -H "Content-Type: application/json" \
-  -d '{"topic": "SerpAPI vs Exa vs Brave Search 2026", "source": "dashboard"}'
+Recommended local flow:
 
-# Open workflow UI
-open http://localhost:3001
+1. Open `http://localhost:3000/trial` to verify the sample-brief path.
+2. Create an account and sign in.
+3. Add Groq and SerpAPI keys in `/profile` or `/settings`.
+4. Start a private run from `/dashboard` or `/briefs/new`.
+5. Inspect `/memory`, `/graph`, and `/logs`.
+
+---
+
+## Project Structure
+
+```text
+Beacon/
+├── app/
+│   ├── page.tsx
+│   ├── trial/
+│   ├── dashboard/
+│   ├── memory/
+│   ├── graph/
+│   ├── settings/
+│   ├── profile/
+│   ├── docs/
+│   └── api/
+│       ├── briefs/
+│       ├── trial/
+│       ├── memory/
+│       ├── logs/
+│       ├── profile/keys/
+│       ├── mcp/
+│       └── webhooks/
+├── workflows/
+│   └── research.ts
+├── lib/
+│   ├── memory.ts
+│   ├── brief-store.ts
+│   ├── groq.ts
+│   ├── serpapi.ts
+│   ├── user-keys.ts
+│   ├── trial.ts
+│   └── types.ts
+├── components/
+├── docs/
+├── AGENTS.md
+└── README.md
 ```
 
 ---
 
-## Deployment Setup (Vercel)
+## Known Boundaries
 
-Set these in **Project Settings → Environment Variables**:
-
-1. `GROQ_API_KEY`
-2. `SERPAPI_API_KEY`
-3. `UPSTASH_REDIS_URL`
-4. `UPSTASH_REDIS_REST_URL`
-5. `UPSTASH_REDIS_REST_TOKEN`
-6. `SLACK_BOT_TOKEN` (if using Slack)
-7. `SLACK_SIGNING_SECRET` (if using Slack)
-8. `VERCEL_URL` (your production URL, e.g. `https://your-app.vercel.app`)
+- The private API is not a public no-auth developer product yet.
+- Discord intake is not fully production-ready.
+- The security and legal pages are much stronger than before, but this is still not a formal enterprise compliance package.
+- Webhook delivery exists, but signing, backoff policy, and public payload docs still need hardening.
 
 ---
 
-## Troubleshooting
+## Creator
 
-- **`[Upstash Redis] The 'url' or 'token' property is missing`**
-  - Set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+**Ken Patrick Garcia**  
+AI Full-Stack Engineer  
+Manila, Philippines
 
-- **`signingSecret or webhookVerifier is required` (Slack route)**
-  - Set both `SLACK_BOT_TOKEN` and `SLACK_SIGNING_SECRET`.
+- GitHub: [KpG782](https://github.com/KpG782)
+- Portfolio: [kenbuilds.tech](https://www.kenbuilds.tech)
+- LinkedIn: [ken-patrick-garcia-ba5430285](https://www.linkedin.com/in/ken-patrick-garcia-ba5430285)
 
-- **`Using edge runtime ... disables static generation`**
-  - Informational warning from Next.js when an edge runtime route exists.
-
-## Demo Script (3 min)
-
-| Time | Scene | What to Show |
-|---|---|---|
-| 0:00–0:15 | Slack | `@beacon research X, watch weekly` → reply with run #1 |
-| 0:15–0:50 | Vercel Dashboard | Workflow steps running, memory being saved |
-| 0:50–1:00 | Drama | Close browser → reopen → still running |
-| 1:00–1:30 | v0 Dashboard | Brief detail — progress + **memory panel** (URLs seen, facts known) |
-| 1:30–2:00 | Slack | Run #1 report posted |
-| 2:00–2:20 | Fast-forward | Show run #2 — delta report, "here's what changed" |
-| 2:20–2:40 | GitHub | PR comment → inline research reply |
-| 2:40–3:00 | Claude Desktop | Call `research_brief` via MCP tool |
+Beacon reflects Ken's work across AI automation, full-stack systems, workflow tooling, and research-oriented product design.
 
 ---
 
 ## License
 
-MIT — built for the Vercel Zero to Agent Hackathon 2026
+MIT

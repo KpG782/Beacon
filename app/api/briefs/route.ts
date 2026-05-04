@@ -5,6 +5,7 @@ import { loadMemory } from '@/lib/memory'
 import { appendLog, hydrateBriefIndex, saveBriefRecord, syncBriefRecord } from '@/lib/brief-store'
 import { rateLimit, LIMITS } from '@/lib/ratelimit'
 import { FRAMEWORK_IDS } from '@/lib/frameworks'
+import { getUserKeys } from '@/lib/user-keys'
 import { NextRequest, NextResponse } from 'next/server'
 
 const VALID_SOURCES = ['slack', 'github', 'discord', 'dashboard', 'mcp'] as const
@@ -30,6 +31,20 @@ export async function POST(req: NextRequest) {
   if (!topic) return NextResponse.json({ error: 'topic is required' }, { status: 400 })
   const objective = typeof body.objective === 'string' ? body.objective.trim().slice(0, 300) : undefined
   const focus = typeof body.focus === 'string' ? body.focus.trim().slice(0, 300) : undefined
+  const webhookUrl = typeof body.webhookUrl === 'string' ? body.webhookUrl.trim() : undefined
+
+  let validWebhookUrl: string | undefined
+  if (webhookUrl) {
+    try {
+      const parsed = new URL(webhookUrl)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return NextResponse.json({ error: 'webhookUrl must use http or https' }, { status: 400 })
+      }
+      validWebhookUrl = parsed.toString()
+    } catch {
+      return NextResponse.json({ error: 'webhookUrl must be a valid URL' }, { status: 400 })
+    }
+  }
 
   const source      = VALID_SOURCES.includes(body.source)  ? body.source  : 'dashboard'
   const depth       = VALID_DEPTHS.includes(body.depth)    ? body.depth   : 'deep'
@@ -41,7 +56,7 @@ export async function POST(req: NextRequest) {
     : undefined
 
   // BYOK — accept user-supplied API keys; never log them
-  const userKeys =
+  const bodyKeys =
     body.userKeys &&
     (typeof body.userKeys.groqApiKey === 'string' || typeof body.userKeys.serpApiKey === 'string')
       ? {
@@ -50,7 +65,34 @@ export async function POST(req: NextRequest) {
         }
       : undefined
 
-  const brief = { userId, topic, objective, focus, source, depth, timeframe, reportStyle, recurring, frameworkId, userKeys }
+  // Guardrail: both API keys must be available (stored or provided in request) before firing a workflow.
+  const storedKeys = await getUserKeys(userId)
+  const hasGroq = !!(bodyKeys?.groqApiKey || storedKeys?.groqApiKey)
+  const hasSerp = !!(bodyKeys?.serpApiKey || storedKeys?.serpApiKey)
+  if (!hasGroq || !hasSerp) {
+    const missing = [!hasGroq && 'Groq', !hasSerp && 'SerpAPI'].filter(Boolean).join(' and ')
+    return NextResponse.json(
+      { error: `Missing API keys: ${missing}. Add them at /profile before running research.` },
+      { status: 403 }
+    )
+  }
+
+  const userKeys = bodyKeys
+
+  const brief = {
+    userId,
+    topic,
+    objective,
+    focus,
+    source,
+    depth,
+    timeframe,
+    reportStyle,
+    recurring,
+    frameworkId,
+    userKeys,
+    webhookUrl: validWebhookUrl,
+  }
   const run = await start(researchAgent, [brief])
   const existingMemory = await loadMemory(userId, brief.topic)
 
@@ -67,6 +109,8 @@ export async function POST(req: NextRequest) {
     createdAt: new Date().toISOString(),
     currentStep: 'loadMemory',
     frameworkId: brief.frameworkId,
+    webhookUrl: brief.webhookUrl,
+    webhookDelivery: brief.webhookUrl ? { status: 'pending' as const, attempts: 0 } : undefined,
   }
 
   await saveBriefRecord(record)

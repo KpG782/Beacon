@@ -12,7 +12,7 @@ export default function SetupPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!groq.trim() && !serp.trim()) { setError('Enter at least one key.'); return }
+    if (!groq.trim() || !serp.trim()) { setError('Both keys are required to run research.'); return }
     setSaving(true)
     setError('')
     try {
@@ -94,19 +94,11 @@ export default function SetupPage() {
 
           <button
             type="submit"
-            disabled={saving || (!groq.trim() && !serp.trim())}
+            disabled={saving || !groq.trim() || !serp.trim()}
             className="w-full py-3 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[12px] font-bold tracking-widest uppercase disabled:opacity-40 transition-colors"
             style={{ fontFamily: 'var(--font-space-grotesk)' }}
           >
             {saving ? 'Saving…' : 'Save & Open Dashboard →'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.replace('/dashboard')}
-            className="text-center text-[10px] text-[#404040] hover:text-[#737373] transition-colors"
-          >
-            Skip for now — I&apos;ll add keys later in Profile
           </button>
         </form>
       </div>

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import ResearchGraphScene, { type GraphSceneLink, type GraphSceneNode } from '@/components/graph/research-graph-scene'
+import FrameworkBanner from '@/components/research/framework-banner'
 
 interface Source {
   url: string
@@ -23,6 +24,7 @@ interface TrialStatus {
   runCount?: number
   error?: string
   deltaUrls?: string[]
+  frameworkId?: string
   queryPlan?: {
     queries: Array<{
       q: string
@@ -389,7 +391,12 @@ export default function TrialRunPage() {
                 <span className="border border-cyan-400/20 bg-cyan-400/8 px-3 py-1 text-cyan-200">{newSourceCount > 0 ? `+${newSourceCount} new sources` : 'baseline brief'}</span>
               </div>
 
-              <div className="markdown-report mt-8">
+              {data?.frameworkId && (
+                <div className="mt-6">
+                  <FrameworkBanner frameworkId={data.frameworkId} />
+                </div>
+              )}
+              <div className="markdown-report mt-6">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{data?.report ?? ''}</ReactMarkdown>
               </div>
             </section>

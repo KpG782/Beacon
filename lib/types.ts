@@ -18,6 +18,7 @@ export interface ResearchBrief {
   source?: 'slack' | 'github' | 'discord' | 'dashboard' | 'mcp'
   frameworkId?: string
   userKeys?: UserKeys
+  webhookUrl?: string
 }
 
 export interface ResearchReport {
@@ -66,6 +67,7 @@ export interface QueryPlan {
     q: string
     engine: 'google' | 'google_news' | 'google_scholar' | 'google_jobs' | 'bing'
     intent: string
+    track?: 'exploration' | 'competitive' | 'signals'
   }[]
 }
 
@@ -98,4 +100,13 @@ export interface RunRecord {
   recurring: boolean
   startedAt: string
   completedAt?: string
+}
+
+export interface WebhookDeliveryState {
+  status: 'pending' | 'delivered' | 'failed'
+  attempts: number
+  lastAttemptAt?: string
+  deliveredAt?: string
+  responseStatus?: number
+  error?: string
 }

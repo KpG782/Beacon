@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import FrameworkBanner from '@/components/research/framework-banner'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -773,6 +774,12 @@ export default function BriefDetail() {
                       </button>
                     </div>
                   </div>
+                  {/* Framework banner */}
+                  {data.frameworkId && (
+                    <div className="border-b border-[#262626] px-5 sm:px-8 py-4">
+                      <FrameworkBanner frameworkId={data.frameworkId} />
+                    </div>
+                  )}
                   {/* Report body */}
                   <div className="px-5 sm:px-8 py-6">
                     <div className="markdown-report text-[13px] text-[#e5e2e3]"

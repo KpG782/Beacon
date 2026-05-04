@@ -7,22 +7,25 @@ import { FRAMEWORKS, type FrameworkOption } from '@/lib/frameworks'
 
 const PRESETS = [
   {
+    label: 'Hackathon Validation',
+    topic: 'Validate a hackathon idea: AI-powered expense categorization for freelancers',
+    objective: 'Determine whether the problem is real and felt by real users, who already complains about it, what alternatives exist, and whether there is a strong enough market signal to build now.',
+    focus: 'problem evidence, user pain signals, existing solutions and gaps, market timing, recent launches',
+    frameworkId: 'problem-solution-fit',
+  },
+  {
     label: 'AI Agents',
     topic: 'AI agent platform pricing and launches in 2026',
     objective: 'Find the strongest products, pricing moves, and recent launches.',
     focus: 'pricing, launches, enterprise traction',
+    frameworkId: '',
   },
   {
     label: 'OpenAI Ecosystem',
     topic: 'OpenAI developer ecosystem updates',
     objective: 'Summarize the most important recent changes for builders.',
     focus: 'models, SDKs, API updates, pricing',
-  },
-  {
-    label: 'Browser Agents',
-    topic: 'AI browser agents market landscape',
-    objective: 'Map the category and identify which products stand out.',
-    focus: 'products, positioning, use cases, risks',
+    frameworkId: '',
   },
 ]
 
@@ -31,7 +34,7 @@ export default function TrialPage() {
   const [topic, setTopic] = useState(PRESETS[0].topic)
   const [objective, setObjective] = useState(PRESETS[0].objective)
   const [focus, setFocus] = useState(PRESETS[0].focus)
-  const [frameworkId, setFrameworkId] = useState<string>(FRAMEWORKS[0]?.id ?? '')
+  const [frameworkId, setFrameworkId] = useState<string>(PRESETS[0].frameworkId || (FRAMEWORKS[0]?.id ?? ''))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -80,6 +83,7 @@ export default function TrialPage() {
     setTopic(preset.topic)
     setObjective(preset.objective)
     setFocus(preset.focus)
+    if (preset.frameworkId) setFrameworkId(preset.frameworkId)
   }
 
   function chooseFramework(framework: FrameworkOption) {

@@ -51,6 +51,7 @@ export default function DocsPage() {
       <DocsSection eyebrow="Where To Start" title="Documentation map">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <DocsCard href="/docs/quickstart" title="Quickstart" body="Run Beacon locally, open the trial flow, and understand the main app surfaces in a few minutes." />
+          <DocsCard href="/docs/frameworks" title="Framework Guide" body="Learn what each research framework does, when to use it, and how it changes Beacon's search and synthesis behavior." />
           <DocsCard href="/docs/api" title="API Reference" body="Use the authenticated HTTP surface to create research runs and read run state from code." />
           <DocsCard href="/docs/mcp" title="MCP Guide" body="Connect Beacon to external AI clients over the MCP transport route." />
           <DocsCard href="/docs/authentication" title="Authentication" body="Understand Clerk auth, public routes, and how Beacon scopes account-private data." />
@@ -109,6 +110,11 @@ export default function DocsPage() {
           Framework choice is behavioral, not cosmetic. Each framework contributes its own planning and synthesis hints
           so the same topic can be investigated through different research lenses.
         </p>
+        <DocsCard
+          href="/docs/frameworks"
+          title="Open the full framework guide"
+          body="Read a longer explanation for every framework in plain language and in technical terms, including when to use it and what Beacon changes under the hood."
+        />
         <div className="grid gap-3 md:grid-cols-2">
           {FRAMEWORKS.map((framework) => (
             <DocsCard

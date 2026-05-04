@@ -33,12 +33,22 @@ const REPORT_STYLE_OPTIONS = [
 
 const PRESETS = [
   {
+    label: 'Hackathon Validation',
+    topic: 'Validate a hackathon idea: AI-powered expense categorization for freelancers',
+    objective: 'Determine whether the problem is real, who already complains about it, what alternatives exist, and whether there is a market signal strong enough to build now.',
+    focus: 'problem evidence, user pain signals, existing solutions and gaps, market timing, recent launches',
+    timeframe: '90d' as const,
+    reportStyle: 'framework' as const,
+    frameworkId: 'problem-solution-fit',
+  },
+  {
     label: 'Competitor Scan',
     topic: 'AI coding agents',
     objective: 'Compare the strongest products, pricing, positioning, and product tradeoffs.',
     focus: 'key players, pricing, differentiators, launches, enterprise traction',
     timeframe: '30d' as const,
     reportStyle: 'executive' as const,
+    frameworkId: '',
   },
   {
     label: 'Weekly Tracker',
@@ -47,14 +57,7 @@ const PRESETS = [
     focus: 'model launches, pricing changes, SDK updates, API features',
     timeframe: '7d' as const,
     reportStyle: 'bullet' as const,
-  },
-  {
-    label: 'Market Map',
-    topic: 'AI browser agents',
-    objective: 'Map the market and identify whitespace.',
-    focus: 'companies, capabilities, use cases, risks, opportunities',
-    timeframe: '90d' as const,
-    reportStyle: 'memo' as const,
+    frameworkId: '',
   },
 ]
 
@@ -162,6 +165,16 @@ export default function NewBriefPage() {
   const [error, setError] = useState('')
   const [memory, setMemory] = useState<MemoryPreview | null | 'checking'>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [keysReady, setKeysReady] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    fetch('/api/profile/keys')
+      .then(r => r.json())
+      .then((data: { groq?: { set: boolean }; serp?: { set: boolean } }) => {
+        setKeysReady(!!(data.groq?.set && data.serp?.set))
+      })
+      .catch(() => setKeysReady(false))
+  }, [])
 
   const selectedFramework: FrameworkOption | null = frameworkId
     ? (FRAMEWORKS.find((f) => f.id === frameworkId) ?? null)
@@ -238,6 +251,7 @@ export default function NewBriefPage() {
     setFocus(preset.focus)
     setTimeframe(preset.timeframe)
     setReportStyle(preset.reportStyle)
+    if (preset.frameworkId) setFrameworkId(preset.frameworkId)
   }
 
   function appendSuggestion(current: string, value: string) {
@@ -305,6 +319,36 @@ export default function NewBriefPage() {
   const reportStyleLabel = REPORT_STYLE_OPTIONS.find((o) => o.value === reportStyle)?.label ?? reportStyle
   const primaryObjective = objective.trim() || 'General research brief'
   const primaryFocus = focus.trim() || 'Broad coverage'
+
+  if (keysReady === false) {
+    return (
+      <div className="px-4 sm:px-6 lg:px-8 py-16 flex flex-col items-center justify-center gap-6 max-w-lg mx-auto text-center">
+        <div className="w-14 h-14 border border-orange-500/30 bg-orange-500/10 flex items-center justify-center">
+          <span className="material-symbols-outlined text-orange-400 text-[32px]">key_off</span>
+        </div>
+        <div>
+          <h2 className="text-[18px] font-bold text-[#e5e5e5] mb-2"
+              style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+            API Keys Required
+          </h2>
+          <p className="text-[13px] text-[#737373] leading-relaxed"
+             style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+            Beacon needs your Groq and SerpAPI keys before it can run research. Keys are encrypted and stored securely — they never leave your account.
+          </p>
+        </div>
+        <Link
+          href="/profile"
+          className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white text-[12px] font-bold tracking-widest uppercase transition-colors"
+          style={{ fontFamily: 'var(--font-space-grotesk)' }}
+        >
+          Add API Keys →
+        </Link>
+        <Link href="/dashboard" className="text-[11px] text-[#737373] hover:text-[#e5e5e5] transition-colors">
+          Back to Dashboard
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-8">

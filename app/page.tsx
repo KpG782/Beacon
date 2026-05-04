@@ -9,26 +9,70 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard' },
 ]
 
-const HERO_METRICS = [
-  ['Persistent memory', 'Each rerun starts with prior facts and known URLs.'],
-  ['Framework-guided', `${FRAMEWORKS.length} research lenses shape search and synthesis.`],
-  ['Multi-surface', 'Trial, dashboard, graph, MCP, and API all point at the same core workflow.'],
+const USE_CASES = [
+  {
+    icon: 'rocket_launch',
+    label: 'Hackathon validation',
+    title: 'Validate a problem before you build.',
+    body: 'Check whether the pain is real, who already complains about it, what alternatives exist today, and whether the timing is right — before you spend the weekend building.',
+    cta: 'Try validation brief',
+    href: '/trial',
+  },
+  {
+    icon: 'schema',
+    label: 'Framework-led deep research',
+    title: 'Same topic, different method, different answer.',
+    body: 'Applying Jobs To Be Done produces different search plans and reports than RICE or Porter\'s Five Forces. The framework changes what counts as evidence.',
+    cta: 'Browse frameworks',
+    href: '/docs',
+  },
+  {
+    icon: 'autorenew',
+    label: 'Delta tracking',
+    title: 'Run once for the baseline. Rerun for what changed.',
+    body: 'Beacon keeps the prior evidence base, skips URLs it already knows, and leads the next report with new movement instead of repeating old summaries.',
+    cta: 'See rerun flow',
+    href: '/memory',
+  },
 ]
 
-const HOW_IT_WORKS = [
-  ['1', 'Start with a topic', 'Use the sample brief flow or go straight into the dashboard research setup.'],
-  ['2', 'Beacon plans the search', 'Context prompts and frameworks expand the topic into targeted queries.'],
-  ['3', 'The workflow builds state', 'Sources, facts, summaries, and deltas are saved so later runs get smarter.'],
-  ['4', 'Use the result anywhere', 'Read the report in the app, inspect the graph, or trigger research from MCP.'],
+const WORKFLOW_STEPS = [
+  {
+    num: '01',
+    title: 'Define the question',
+    body: 'Set the topic, objective, and depth. Beacon starts by loading prior memory for the same topic before planning new searches.',
+    accent: false,
+  },
+  {
+    num: '02',
+    title: 'Choose the research method',
+    body: 'Frameworks like JTBD, RICE, SWOT, or Porter change both the search plan and the final synthesis, so Beacon investigates with a clear lens instead of generic summarization.',
+    accent: true,
+  },
+  {
+    num: '03',
+    title: 'Search, validate, and save',
+    body: 'Parallel search agents collect evidence, a validator checks contradictions, and the final cited report is written back into durable memory for the next run.',
+    accent: false,
+  },
+]
+
+const HACKATHON_FRAMEWORKS = [
+  'Jobs To Be Done',
+  'Problem / Solution Fit',
+  'Opportunity Solution Tree',
+  'SWOT Analysis',
+  'PESTLE',
+  'RICE Scoring',
+  'Market Map',
+  'Blue Ocean',
 ]
 
 const SURFACES = [
-  ['Sample Brief', '/trial', 'Public try-before-signup entrypoint with a guided setup flow and live graph loading.'],
-  ['Dashboard', '/dashboard', 'Private operator surface for running briefs, inspecting memory, and managing keys.'],
-  ['Docs', '/docs', 'Public documentation hub for HTTP, MCP, auth, security, deployment, and roadmap status.'],
-  ['Support', '/support', 'Troubleshooting surface for runtime, memory, workflow, and integration recovery steps.'],
-  ['Memory Graph', '/graph', 'Visualize how one report becomes reusable graph-shaped research state.'],
-  ['Memory Bank', '/memory', 'Inspect durable topic memory, facts, run history, and saved source ledgers.'],
+  ['Demo', '/trial', 'Run the public sample flow and test frameworks before account setup.'],
+  ['Dashboard', '/dashboard', 'Operate briefs, memory, API keys, and logs from the main product surface.'],
+  ['Memory Graph', '/graph', 'Inspect provenance and see how sources, reports, and reruns connect.'],
+  ['API + MCP', '/docs/api', 'Trigger Beacon from scripts, workflows, Claude Desktop, or Cursor.'],
 ]
 
 const DOC_LINKS = [
@@ -40,30 +84,13 @@ const DOC_LINKS = [
   ['Security', '/docs/security'],
 ]
 
-const DOC_MAP = [
-  [
-    'Docs',
-    '/docs',
-    'Should answer what Beacon is, how to start, what APIs and MCP tools exist, how setup works, and what is planned versus shipped.',
-  ],
-  [
-    'Support',
-    '/support',
-    'Should stay focused on troubleshooting, runtime errors, missing memory, workflow issues, and recovery checklists.',
-  ],
-  [
-    'Author',
-    'https://github.com/KpG782',
-    'Should clearly identify who built Beacon, the project context, and where people can check the repo or reach the maintainer.',
-  ],
-]
-
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#0b0d10] text-[#e5e2e3] overflow-clip">
       <div className="absolute inset-0 pointer-events-none landing-noise opacity-40" />
       <div className="absolute inset-x-0 top-0 h-[32rem] pointer-events-none neural-backdrop opacity-80" />
 
+      {/* ── Nav ── */}
       <header className="sticky top-4 z-50 mx-4 max-w-7xl rounded-2xl border border-white/8 bg-[#0b0d10]/80 backdrop-blur-xl lg:mx-auto">
         <div className="flex items-center justify-between gap-6 px-6 py-4">
           <div className="flex items-center gap-3">
@@ -71,17 +98,11 @@ export default function LandingPage() {
               <span className="material-symbols-outlined text-[20px] text-cyan-400">adjust</span>
             </div>
             <div>
-              <div
-                className="text-[11px] uppercase tracking-[0.3em] text-cyan-400"
-                style={{ fontFamily: 'var(--font-space-grotesk)' }}
-              >
+              <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-400" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
                 Beacon
               </div>
-              <div
-                className="text-[12px] text-[#849495]"
-                style={{ fontFamily: 'var(--font-space-grotesk)' }}
-              >
-                Durable web research with context, memory, and harness layers
+              <div className="text-[12px] text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                Validate. Track. Remember.
               </div>
             </div>
           </div>
@@ -119,27 +140,28 @@ export default function LandingPage() {
       </header>
 
       <main className="relative z-10">
+
+        {/* ── Hero ── */}
         <section className="mx-auto max-w-7xl px-6 py-16 lg:py-24">
-          <div className="grid gap-10 xl:grid-cols-[minmax(0,1.05fr)_420px] xl:items-end">
+          <div className="grid gap-10 xl:grid-cols-[minmax(0,1.1fr)_380px] xl:items-center">
             <div>
               <div
                 className="inline-flex items-center gap-2 border border-cyan-400/20 bg-cyan-400/8 px-3 py-2 text-[11px] uppercase tracking-[0.24em] text-cyan-300"
                 style={{ fontFamily: 'var(--font-space-grotesk)' }}
               >
                 <span className="h-2 w-2 bg-cyan-400 animate-pulse" />
-                Trial + dashboard + MCP
+                Durable research agent — Vercel Zero to Agent 2026
               </div>
 
-              <h1 className="mt-6 max-w-5xl text-5xl font-semibold leading-[0.92] tracking-[-0.04em] text-[#f4f7f8] md:text-7xl">
-                Research that keeps getting better after the first run.
+              <h1 className="mt-6 max-w-4xl text-5xl font-semibold leading-[0.92] tracking-[-0.04em] text-[#f4f7f8] md:text-7xl">
+                Validate a problem, track what changes, and keep the evidence.
               </h1>
 
               <p
                 className="mt-6 max-w-3xl text-[17px] leading-8 text-[#9db0b3]"
                 style={{ fontFamily: 'var(--font-space-grotesk)' }}
               >
-                Beacon is a durable web research agent with persistent memory. It plans targeted searches, saves what
-                each topic already knows, and turns later reruns into deltas instead of repeating the same report.
+                Beacon is a durable web research agent for questions that need more than one pass. It fans out deep parallel searches, applies structured research frameworks, saves everything it learned, and turns reruns into delta reports instead of starting from zero.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">
@@ -151,11 +173,11 @@ export default function LandingPage() {
                   Run Sample Brief
                 </Link>
                 <Link
-                  href="/dashboard"
+                  href="/trial"
                   className="border border-white/10 px-6 py-3 text-[12px] uppercase tracking-[0.24em] text-[#d7e2e4] transition-colors hover:bg-white/5"
                   style={{ fontFamily: 'var(--font-space-grotesk)' }}
                 >
-                  Open Dashboard
+                  Try Hackathon Validation
                 </Link>
                 <Link
                   href="/docs"
@@ -167,14 +189,15 @@ export default function LandingPage() {
               </div>
             </div>
 
+            {/* Hero proof points */}
             <div className="grid gap-3">
-              {HERO_METRICS.map(([title, body]) => (
+              {[
+                ['Built for repeated research', 'Use Beacon when a topic needs a baseline now and a smarter rerun later.'],
+                ['Frameworks change the investigation', `${FRAMEWORKS.length} research lenses reshape both search planning and final synthesis.`],
+              ].map(([title, body]) => (
                 <div key={title} className="border border-white/8 bg-black/25 p-5">
-                  <div className="text-[17px] text-[#f3f7f8]">{title}</div>
-                  <p
-                    className="mt-2 text-[12px] leading-6 text-[#8ea1a5]"
-                    style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                  >
+                  <div className="text-[15px] text-[#f3f7f8]">{title}</div>
+                  <p className="mt-2 text-[12px] leading-6 text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
                     {body}
                   </p>
                 </div>
@@ -183,86 +206,239 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-6 pb-18">
-          <div className="relative">
-            <ArchitectureScene />
+        {/* ── Use Cases ── */}
+        <section className="mx-auto max-w-7xl px-6 pb-20">
+          <div className="mb-8">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 mb-2" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              Built for
+            </div>
+            <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#f3f7f8]">
+              Research that needs a second run.
+            </h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {USE_CASES.map((uc) => (
+              <div key={uc.label} className="border border-white/8 bg-black/25 p-5 flex flex-col gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-[18px] text-cyan-400">{uc.icon}</span>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-cyan-300" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      {uc.label}
+                    </div>
+                  </div>
+                  <div className="text-[16px] text-[#eef3f4] leading-snug mb-2">{uc.title}</div>
+                  <p className="text-[12px] leading-6 text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    {uc.body}
+                  </p>
+                </div>
+                <Link
+                  href={uc.href}
+                  className="mt-auto self-start border border-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-cyan-200 transition-colors hover:bg-cyan-400/10"
+                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                >
+                  {uc.cta} →
+                </Link>
+              </div>
+            ))}
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-6 pb-18">
-          <div className="grid gap-3 md:grid-cols-4">
-            {HOW_IT_WORKS.map(([step, title, body]) => (
-              <div key={step} className="border border-white/8 bg-black/25 p-5">
+        {/* ── How It Works: Pipeline ── */}
+        <section className="mx-auto max-w-7xl px-6 pb-20">
+          <div className="mb-8">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 mb-2" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              Workflow
+            </div>
+            <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#f3f7f8]">
+              From question to reusable evidence base.
+            </h2>
+          </div>
+
+          {/* Pipeline flow */}
+          <div className="relative">
+            {/* Connector line — hidden on mobile */}
+            <div className="absolute top-[44px] left-0 right-0 hidden h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent lg:block" />
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              {WORKFLOW_STEPS.map((step, i) => (
                 <div
-                  className="text-[10px] uppercase tracking-[0.22em] text-cyan-300"
-                  style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}
+                  key={step.num}
+                  className={`relative border p-5 flex flex-col gap-3 ${
+                    step.accent
+                      ? 'border-cyan-400/40 bg-cyan-400/[0.05]'
+                      : 'border-white/8 bg-black/25'
+                  }`}
                 >
-                  {step}
+                  {/* Step number */}
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center text-[11px] font-bold border ${
+                        step.accent
+                          ? 'border-cyan-400/60 bg-cyan-400/15 text-cyan-300'
+                          : 'border-white/12 bg-black/30 text-[#849495]'
+                      }`}
+                      style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}
+                    >
+                      {step.num}
+                    </div>
+                    {/* Arrow connector between steps */}
+                    {i < WORKFLOW_STEPS.length - 1 && (
+                      <span className="absolute right-[-10px] top-[26px] z-10 hidden text-[#849495] text-[14px] lg:block">›</span>
+                    )}
+                  </div>
+                  <div className={`text-[14px] font-medium leading-snug ${step.accent ? 'text-cyan-200' : 'text-[#eef3f4]'}`}>
+                    {step.title}
+                  </div>
+                  <p className="text-[11px] leading-[1.6] text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    {step.body}
+                  </p>
+                  {step.accent && (
+                    <div className="mt-auto flex items-center gap-1.5 text-[10px] text-cyan-400" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      <span className="h-1.5 w-1.5 bg-cyan-400 animate-pulse" />
+                      Framework controls the research lens
+                    </div>
+                  )}
                 </div>
-                <div className="mt-3 text-[18px] text-[#f3f7f8]">{title}</div>
-                <p
-                  className="mt-2 text-[12px] leading-6 text-[#8ea1a5]"
-                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                >
-                  {body}
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 border border-cyan-400/15 bg-cyan-400/[0.03] p-5 text-[13px] leading-7 text-[#9db0b3]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+            Deep mode fans out parallel searches across landscape, competitive, and community signals, then uses a validator pass to merge contradictions into one cited report.
+          </div>
+        </section>
+
+        {/* ── Neural Memory Mesh ── */}
+        <section className="mx-auto max-w-7xl px-6 pb-20">
+          <div className="mb-8">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 mb-2" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              Memory architecture
+            </div>
+            <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#f3f7f8] max-w-2xl">
+              Why Beacon never restarts from zero.
+            </h2>
+            <p className="mt-3 max-w-3xl text-[14px] leading-7 text-[#9db0b3]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              Every URL, fact, and summary becomes a node in a persistent graph. Each rerun strengthens the existing mesh — so run three is faster, deeper, and more targeted than run one. The topology below is live: signal packets show data flowing between layers in real time.
+            </p>
+          </div>
+
+          <ArchitectureScene />
+
+          <div className="mt-6 grid gap-3 md:grid-cols-3">
+            {[
+              {
+                dot: '#00dbe9',
+                label: 'Context layer',
+                title: 'What the model sees per request',
+                body: 'Query plans, compressed SERP results, and memory context are assembled fresh each run — optimized so the model always works from the most relevant slice of knowledge, not a raw data dump.',
+              },
+              {
+                dot: '#65f2b5',
+                label: 'Memory layer',
+                title: 'What compounds across runs',
+                body: 'Seen URLs, extracted facts, run summaries, and source attribution are stored per topic in Redis with 30-day TTL. Later runs skip known URLs and lead with what changed — no repeated baselines.',
+              },
+              {
+                dot: '#ffb84e',
+                label: 'Harness layer',
+                title: 'What keeps the system reliable',
+                body: 'Workflow SDK step idempotency, structured logging, and Vercel durable execution mean partial failures retry cleanly, long runs survive restarts, and every step is observable and auditable.',
+              },
+            ].map((card) => (
+              <div key={card.label} className="border border-white/8 bg-black/25 p-5 flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full shrink-0 animate-pulse" style={{ background: card.dot }} />
+                  <div className="text-[10px] uppercase tracking-[0.2em]" style={{ color: card.dot, fontFamily: 'var(--font-space-grotesk)' }}>
+                    {card.label}
+                  </div>
+                </div>
+                <div className="text-[15px] text-[#eef3f4] leading-snug">{card.title}</div>
+                <p className="text-[12px] leading-[1.65] text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  {card.body}
                 </p>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-6 pb-18">
-          <div className="border border-cyan-400/18 bg-cyan-400/[0.04] p-6 md:p-7">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div
-                  className="inline-flex items-center gap-2 border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-cyan-300"
-                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                >
-                  <span className="h-1.5 w-1.5 bg-cyan-300 animate-pulse" />
-                  Core capability
+        {/* ── Hackathon Validation ── */}
+        <section className="mx-auto max-w-7xl px-6 pb-20">
+          <div className="border border-cyan-400/15 bg-cyan-400/[0.03] p-8">
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
+              <div className="lg:max-w-sm">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 mb-2" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  For hackathon builders
                 </div>
-                <h2 className="mt-3 text-2xl tracking-[-0.03em] text-[#f3f7f8]">
-                  {FRAMEWORKS.length} research frameworks shape the system behavior.
+                <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[#f3f7f8] mb-3">
+                  Validate the problem before you build.
                 </h2>
-                <p
-                  className="mt-2 max-w-3xl text-[13px] leading-7 text-[#98abaf]"
+                <p className="text-[13px] leading-7 text-[#9db0b3] mb-5" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Use Beacon to pressure-test whether your hackathon idea solves a real problem before you spend the weekend building it. Check whether the pain is real, who already complains about it, what alternatives exist, and whether recent market movement suggests urgency.
+                </p>
+                <Link
+                  href="/trial"
+                  className="inline-flex bg-cyan-400 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-[#002022] transition-colors hover:bg-cyan-300"
                   style={{ fontFamily: 'var(--font-space-grotesk)' }}
                 >
-                  Framework choice is not cosmetic. It changes the planning prompt and the synthesis prompt so the
-                  same topic can be explored through different research methods.
-                </p>
+                  Run Validation Brief →
+                </Link>
               </div>
-              <Link
-                href="/trial"
-                className="border border-cyan-400/35 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-cyan-200 transition-colors hover:bg-cyan-400/10"
-                style={{ fontFamily: 'var(--font-space-grotesk)' }}
-              >
-                Try Frameworks
-              </Link>
+
+              <div className="flex-1">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-[#849495] mb-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Recommended validation frameworks
+                </div>
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {HACKATHON_FRAMEWORKS.map((fw) => (
+                    <span
+                      key={fw}
+                      className="border border-white/10 bg-black/30 px-3 py-1.5 text-[11px] text-[#c4d4d7]"
+                      style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                    >
+                      {fw}
+                    </span>
+                  ))}
+                </div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {[
+                    'Is this problem real and documented in the wild?',
+                    'Who feels the pain most — and are they already vocal about it?',
+                    'What solutions already exist, and what do they miss?',
+                    'Is the timing right based on recent market movement?',
+                  ].map((q) => (
+                    <div key={q} className="flex items-start gap-2 text-[12px] text-[#9db0b3]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      <span className="text-cyan-400 mt-0.5 shrink-0">›</span>
+                      {q}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-6 pb-18">
-          <div className="grid gap-3 lg:grid-cols-3">
+        {/* ── Access Surfaces ── */}
+        <section className="mx-auto max-w-7xl px-6 pb-20">
+          <div className="mb-8">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 mb-2" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              Access surfaces
+            </div>
+            <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#f3f7f8]">
+              Use Beacon from anywhere.
+            </h2>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             {SURFACES.map(([title, href, body]) => (
               <Link
                 key={title}
                 href={href}
                 className="border border-white/8 bg-black/25 p-5 transition-colors hover:border-cyan-400/20 hover:bg-cyan-400/[0.03]"
               >
-                <div
-                  className="text-[10px] uppercase tracking-[0.22em] text-cyan-300"
-                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                >
-                  Access Surface
+                <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 mb-3" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Surface
                 </div>
-                <div className="mt-3 text-[18px] text-[#eef3f4]">{title}</div>
-                <p
-                  className="mt-2 text-[12px] leading-6 text-[#92a5a8]"
-                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                >
+                <div className="text-[17px] text-[#eef3f4] mb-2">{title}</div>
+                <p className="text-[12px] leading-6 text-[#92a5a8]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
                   {body}
                 </p>
               </Link>
@@ -270,32 +446,25 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-6 pb-18">
-          <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        {/* ── API + Docs ── */}
+        <section className="mx-auto max-w-7xl px-6 pb-20">
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="border border-white/8 bg-black/25 p-6">
-              <div
-                className="text-[11px] uppercase tracking-[0.24em] text-cyan-300 mb-4"
-                style={{ fontFamily: 'var(--font-space-grotesk)' }}
-              >
-                Try Beacon via API
+              <div className="text-[11px] uppercase tracking-[0.24em] text-cyan-300 mb-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                HTTP API
               </div>
-              <p
-                className="max-w-xl text-[13px] leading-7 text-[#98abaf]"
-                style={{ fontFamily: 'var(--font-space-grotesk)' }}
-              >
-                Beacon is not only a UI. The private HTTP surface lets authenticated users create research runs from
-                their own tooling with the same workflow and framework engine used in the app.
+              <p className="max-w-xl text-[13px] leading-7 text-[#98abaf] mb-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                Trigger research runs, poll status, and read reports from any script, workflow, or agent. Same depth, framework, and memory engine as the dashboard.
               </p>
-              <pre className="mt-4 overflow-x-auto border border-white/8 bg-black/30 p-4 text-[12px] leading-6 text-[#d3dddf]">
-                <code style={{ fontFamily: 'var(--font-space-grotesk)' }}>{`curl -X POST http://localhost:3000/api/briefs \\
+              <pre className="overflow-x-auto border border-white/8 bg-black/30 p-4 text-[12px] leading-6 text-[#d3dddf]">
+                <code style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>{`curl -X POST /api/briefs \\
   -H "Content-Type: application/json" \\
   -d '{
-    "topic": "AI coding agent benchmarks in 2026",
-    "objective": "Compare platforms and trust signals",
-    "focus": "pricing, API, enterprise readiness",
+    "topic": "AI coding agents 2026",
+    "objective": "Compare platforms and pricing",
     "depth": "deep",
     "timeframe": "30d",
-    "reportStyle": "memo"
+    "reportStyle": "executive"
   }'`}</code>
               </pre>
               <div className="mt-4">
@@ -304,32 +473,23 @@ export default function LandingPage() {
                   className="inline-flex border border-cyan-400/20 bg-cyan-400/8 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-cyan-300 transition-colors hover:bg-cyan-400/12"
                   style={{ fontFamily: 'var(--font-space-grotesk)' }}
                 >
-                  Open API Reference
+                  Open API Reference →
                 </Link>
               </div>
             </div>
 
             <div className="border border-white/8 bg-black/25 p-6">
-              <div
-                className="text-[11px] uppercase tracking-[0.24em] text-cyan-300 mb-4"
-                style={{ fontFamily: 'var(--font-space-grotesk)' }}
-              >
-                Developer Portal
+              <div className="text-[11px] uppercase tracking-[0.24em] text-cyan-300 mb-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                Developer docs
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-2 md:grid-cols-2">
                 {DOC_LINKS.map(([label, href]) => (
                   <Link
                     key={href}
                     href={href}
                     className="border border-white/8 bg-black/20 p-4 transition-colors hover:border-cyan-400/20"
                   >
-                    <div className="text-[15px] text-[#eef3f4]">{label}</div>
-                    <p
-                      className="mt-2 text-[12px] leading-6 text-[#92a5a8]"
-                      style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                    >
-                      Public documentation page inside Beacon.
-                    </p>
+                    <div className="text-[14px] text-[#eef3f4]">{label}</div>
                   </Link>
                 ))}
               </div>
@@ -337,77 +497,9 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-6 pb-20">
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="border border-white/8 bg-black/25 p-6">
-              <div
-                className="text-[11px] uppercase tracking-[0.24em] text-cyan-300 mb-4"
-                style={{ fontFamily: 'var(--font-space-grotesk)' }}
-              >
-                Navbar and hero focus
-              </div>
-              <div className="grid gap-3">
-                {[
-                  ['Navbar', 'Should only point to Demo, Docs, Support, and Dashboard.'],
-                  ['Hero', 'Should explain Beacon in one pass: what it is, why it is different, and where to try it.'],
-                  ['Primary CTA', 'Run Sample Brief should stay the clearest next action for first-time visitors.'],
-                ].map(([title, body]) => (
-                  <div key={title} className="border border-white/8 bg-black/20 p-4">
-                    <div className="text-[16px] text-[#eef3f4]">{title}</div>
-                    <p
-                      className="mt-2 text-[12px] leading-6 text-[#92a5a8]"
-                      style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                    >
-                      {body}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="border border-white/8 bg-black/25 p-6">
-              <div
-                className="text-[11px] uppercase tracking-[0.24em] text-cyan-300 mb-4"
-                style={{ fontFamily: 'var(--font-space-grotesk)' }}
-              >
-                Footer information architecture
-              </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                {DOC_MAP.map(([title, href, body]) => (
-                  <Link
-                    key={title}
-                    href={href}
-                    target={href.startsWith('http') ? '_blank' : undefined}
-                    rel={href.startsWith('http') ? 'noreferrer' : undefined}
-                    className="border border-white/8 bg-[#091117] p-4 transition-colors hover:border-cyan-400/20"
-                  >
-                    <div
-                      className="text-[10px] uppercase tracking-[0.2em] text-cyan-300"
-                      style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}
-                    >
-                      {title}
-                    </div>
-                    <p
-                      className="mt-3 text-[12px] leading-6 text-[#c4d4d7]"
-                      style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                    >
-                      {body}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-              <p
-                className="mt-5 text-[13px] leading-7 text-[#98abaf]"
-                style={{ fontFamily: 'var(--font-space-grotesk)' }}
-              >
-                Footer links should help users answer three questions fast: how to use Beacon, how to troubleshoot it,
-                and who built it. Anything beyond that should come after those basics are clear.
-              </p>
-            </div>
-          </div>
-        </section>
       </main>
 
+      {/* ── Footer ── */}
       <footer className="relative z-10 border-t border-white/8">
         <div className="mx-auto grid max-w-7xl gap-8 px-6 py-10 md:grid-cols-[1.2fr_0.8fr_0.8fr_0.9fr]">
           <div>
@@ -416,34 +508,21 @@ export default function LandingPage() {
                 <span className="material-symbols-outlined text-[20px] text-cyan-400">adjust</span>
               </div>
               <div>
-                <div
-                  className="text-[11px] uppercase tracking-[0.3em] text-cyan-400"
-                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                >
+                <div className="text-[11px] uppercase tracking-[0.3em] text-cyan-400" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
                   Beacon
                 </div>
-                <div
-                  className="text-[12px] text-[#849495]"
-                  style={{ fontFamily: 'var(--font-space-grotesk)' }}
-                >
-                  Durable research with context, memory, and harness.
+                <div className="text-[12px] text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Validate. Track. Remember.
                 </div>
               </div>
             </div>
-            <p
-              className="mt-4 max-w-sm text-[13px] leading-7 text-[#8ea1a5]"
-              style={{ fontFamily: 'var(--font-space-grotesk)' }}
-            >
-              Durable web research agent with persistent cross-session memory, delta reporting, workflow orchestration,
-              and multi-surface access.
+            <p className="mt-4 max-w-sm text-[13px] leading-7 text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              Durable web research agent with persistent memory, delta reporting, multi-agent deep search, and {FRAMEWORKS.length} research frameworks.
             </p>
           </div>
 
           <div>
-            <div
-              className="text-[10px] uppercase tracking-[0.22em] text-cyan-300"
-              style={{ fontFamily: 'var(--font-space-grotesk)' }}
-            >
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
               Product
             </div>
             <div className="mt-4 flex flex-col gap-2 text-[13px] text-[#c8d5d8]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
@@ -455,34 +534,33 @@ export default function LandingPage() {
           </div>
 
           <div>
-            <div
-              className="text-[10px] uppercase tracking-[0.22em] text-cyan-300"
-              style={{ fontFamily: 'var(--font-space-grotesk)' }}
-            >
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
               Resources
             </div>
             <div className="mt-4 flex flex-col gap-2 text-[13px] text-[#c8d5d8]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
               <Link href="/docs" className="hover:text-cyan-300">Documentation</Link>
               <Link href="/docs/api" className="hover:text-cyan-300">API Reference</Link>
+              <Link href="/docs/mcp" className="hover:text-cyan-300">MCP Guide</Link>
               <Link href="/docs/security" className="hover:text-cyan-300">Security</Link>
               <Link href="/support" className="hover:text-cyan-300">Support</Link>
-              <Link href="/docs/quickstart" className="hover:text-cyan-300">Quickstart</Link>
             </div>
           </div>
 
           <div>
-            <div
-              className="text-[10px] uppercase tracking-[0.22em] text-cyan-300"
-              style={{ fontFamily: 'var(--font-space-grotesk)' }}
-            >
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
               Author
             </div>
             <div className="mt-4 flex flex-col gap-2 text-[13px] text-[#c8d5d8]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
               <a href="https://github.com/KpG782" target="_blank" rel="noreferrer" className="hover:text-cyan-300">
-                KpG782 on GitHub
+                Ken Garcia on GitHub
               </a>
-              <span className="text-[#8ea1a5]">Vercel Zero to Agent Hackathon 2026 build.</span>
-              <Link href="/docs" className="hover:text-cyan-300">Developer-facing docs</Link>
+              <a href="https://www.kenbuilds.tech" target="_blank" rel="noreferrer" className="hover:text-cyan-300">
+                kenbuilds.tech
+              </a>
+              <a href="https://www.linkedin.com/in/ken-patrick-garcia-ba5430285" target="_blank" rel="noreferrer" className="hover:text-cyan-300">
+                LinkedIn
+              </a>
+              <span className="text-[#8ea1a5]">AI Full-Stack Engineer · Manila, Philippines · Creator of Beacon.</span>
             </div>
           </div>
         </div>
@@ -490,7 +568,7 @@ export default function LandingPage() {
         <div className="border-t border-white/8">
           <div className="mx-auto flex max-w-7xl flex-col gap-3 px-6 py-4 text-[12px] text-[#849495] md:flex-row md:items-center md:justify-between">
             <div style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-              © 2026 Beacon. Built for durable research, persistent memory, and agent-native workflows.
+              © 2026 Beacon. Created by Ken Patrick Garcia for the Vercel Zero to Agent Hackathon.
             </div>
             <div className="flex items-center gap-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
               <Link href="/privacy" className="hover:text-cyan-300">Privacy</Link>

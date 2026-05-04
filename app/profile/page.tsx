@@ -201,6 +201,10 @@ export default function ProfilePage() {
             Profile
           </h1>
           <p className="text-xs text-[#737373] mt-0.5">{user?.primaryEmailAddress?.emailAddress}</p>
+          <p className="text-xs text-[#737373] mt-2 max-w-lg leading-relaxed">
+            This page exists for practical operator setup: save the provider keys Beacon needs to run private research,
+            connect external AI clients over MCP, and manage the account identity that scopes your briefs, memory, and logs.
+          </p>
         </div>
         <button
           onClick={() => signOut({ redirectUrl: '/sign-in' })}
@@ -234,6 +238,39 @@ export default function ProfilePage() {
             </p>
             <p className="text-xs text-[#737373] mt-0.5">
               Member since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="text-[10px] font-bold tracking-widest uppercase text-[#737373] mb-3"
+            style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+          Why this page matters
+        </h2>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="border border-[#262626] rounded-lg p-4">
+            <p className="text-[11px] font-bold tracking-wide uppercase text-[#e5e5e5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              Private research runs
+            </p>
+            <p className="text-xs text-[#737373] mt-2 leading-relaxed">
+              Signed-in research uses your account scope so briefs, memory, and logs stay separated from other users.
+            </p>
+          </div>
+          <div className="border border-[#262626] rounded-lg p-4">
+            <p className="text-[11px] font-bold tracking-wide uppercase text-[#e5e5e5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              Bring your own keys
+            </p>
+            <p className="text-xs text-[#737373] mt-2 leading-relaxed">
+              Groq and SerpAPI keys let Beacon run private research using your own model and search quotas instead of shared defaults.
+            </p>
+          </div>
+          <div className="border border-[#262626] rounded-lg p-4">
+            <p className="text-[11px] font-bold tracking-wide uppercase text-[#e5e5e5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              MCP client setup
+            </p>
+            <p className="text-xs text-[#737373] mt-2 leading-relaxed">
+              This page also gives you the handoff point for connecting Claude Desktop, Cursor, or another MCP-capable client to Beacon.
             </p>
           </div>
         </div>

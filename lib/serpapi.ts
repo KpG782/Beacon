@@ -49,10 +49,15 @@ export function createSerpApiTool(apiKey?: string) {
 }
 
 // [Context] Compress SERP results into lean context — critical for token budget
-export function compressSerpResults(results: Array<{ results?: Array<{ url?: string; snippet?: string; title?: string }> }>): string {
+export function compressSerpResults(
+  results: Array<{ results?: Array<{ url?: string; snippet?: string; title?: string }> }>,
+  options: { maxResults?: number } = {}
+): string {
+  const maxResults = options.maxResults ?? 40
   return results
     .flatMap((r) => r.results ?? [])
     .filter((r) => r.url && r.snippet)
+    .slice(0, maxResults)
     .map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}\nURL: ${r.url}`)
     .join('\n\n')
 }

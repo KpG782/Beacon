@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Html, Line, OrbitControls, Sparkles, Text } from '@react-three/drei'
+import { Html, Line, OrbitControls, Sparkles } from '@react-three/drei'
 import { useMemo, useRef, useState } from 'react'
 import type { Group, Mesh } from 'three'
 
@@ -169,16 +169,18 @@ function GraphNodeMesh({
         </group>
       )}
 
-      <Text
-        position={[0, -(node.kind === 'topic' ? 1.02 : 0.42), 0]}
-        fontSize={node.kind === 'topic' ? 0.16 : 0.11}
-        maxWidth={1.6}
-        color={selected ? '#f4fbfc' : '#c8d5d8'}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {node.label}
-      </Text>
+      <Html position={[0, -(node.kind === 'topic' ? 1.02 : 0.42), 0]} center transform sprite>
+        <div
+          className={`border px-2 py-1 text-center text-[9px] uppercase tracking-[0.14em] whitespace-nowrap ${
+            selected
+              ? 'border-cyan-400/30 bg-black/85 text-[#f4fbfc]'
+              : 'border-white/10 bg-black/70 text-[#c8d5d8]'
+          }`}
+          style={{ fontFamily: 'var(--font-space-grotesk)' }}
+        >
+          {node.label}
+        </div>
+      </Html>
 
       {selected && (
         <Html position={[0, node.kind === 'topic' ? 1.12 : 0.62, 0]} center>

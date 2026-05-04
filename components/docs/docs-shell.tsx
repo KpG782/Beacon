@@ -201,6 +201,7 @@ export function CodeBlock({ children }: { children: React.ReactNode }) {
 export const DOCS_NAV: DocsNavItem[] = [
   { href: '/docs', label: 'Overview' },
   { href: '/docs/quickstart', label: 'Quickstart' },
+  { href: '/docs/frameworks', label: 'Framework Guide' },
   { href: '/docs/api', label: 'API Reference' },
   { href: '/docs/mcp', label: 'MCP Guide' },
   { href: '/docs/authentication', label: 'Authentication' },

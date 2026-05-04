@@ -1,7 +1,7 @@
 'use client'
 
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Float, Line, OrbitControls, Sparkles, Text } from '@react-three/drei'
+import { Float, Html, Line, OrbitControls, Sparkles } from '@react-three/drei'
 import { useMemo, useRef } from 'react'
 import type { Group, Mesh } from 'three'
 
@@ -249,15 +249,14 @@ function SceneContent() {
                 <meshStandardMaterial color={node.color} emissive={node.color} emissiveIntensity={0.18} wireframe transparent opacity={0.55} />
               </mesh>
             </Float>
-            <Text
-              position={[0, -0.42, 0]}
-              fontSize={0.16}
-              color="#d8e4e7"
-              anchorX="center"
-              anchorY="middle"
-            >
-              {node.title}
-            </Text>
+            <Html position={[0, -0.42, 0]} center transform sprite>
+              <div
+                className="border border-white/10 bg-black/70 px-2 py-1 text-[9px] uppercase tracking-[0.16em] text-[#d8e4e7] whitespace-nowrap"
+                style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}
+              >
+                {node.title}
+              </div>
+            </Html>
           </group>
         ))}
 
@@ -277,23 +276,126 @@ function SceneContent() {
   )
 }
 
+const LAYER_LEGEND = [
+  { color: '#00dbe9', dot: 'bg-[#00dbe9]', label: 'Context', role: 'Per-request intelligence' },
+  { color: '#65f2b5', dot: 'bg-[#65f2b5]', label: 'Memory', role: 'Cross-session state' },
+  { color: '#ffb84e', dot: 'bg-[#ffb84e]', label: 'Harness', role: 'Reliability + logs' },
+  { color: '#9ed8ff', dot: 'bg-[#9ed8ff]', label: 'MCP', role: 'External agent access' },
+]
+
+// Simulated run history depths — higher = more memory accumulated
+const HEATMAP_RUNS = [
+  [0.18, 0.15, 0.12, 0.10],
+  [0.38, 0.32, 0.25, 0.20],
+  [0.55, 0.48, 0.38, 0.30],
+  [0.70, 0.62, 0.50, 0.42],
+  [0.82, 0.74, 0.60, 0.52],
+  [0.92, 0.85, 0.72, 0.62],
+]
+
+const HEATMAP_COLORS = ['#00dbe9', '#65f2b5', '#ffb84e', '#9ed8ff']
+
 export default function ArchitectureScene() {
   return (
-    <div className="relative h-[520px] w-full overflow-hidden border border-white/8 bg-[#0b0d10] md:h-[580px]">
-      <Canvas camera={{ position: [0, 0, 7], fov: 42 }}>
-        <SceneContent />
-      </Canvas>
-      <div className="pointer-events-none absolute inset-x-10 top-8 h-px bg-[linear-gradient(90deg,transparent,rgba(0,219,233,0.7),transparent)] opacity-70" />
-      <div className="pointer-events-none absolute left-8 top-8 border border-cyan-400/15 bg-black/40 px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-cyan-300">
-        Neural memory mesh
+    <div className="relative w-full overflow-hidden border border-white/8 bg-[#0b0d10]">
+      {/* 3D Canvas */}
+      <div className="h-[480px] md:h-[540px]">
+        <Canvas camera={{ position: [0, 0, 7], fov: 42 }}>
+          <SceneContent />
+        </Canvas>
       </div>
-      <div className="pointer-events-none absolute right-8 top-8 border border-white/10 bg-black/40 px-3 py-2 text-[10px] uppercase tracking-[0.22em] text-[#dbe7ea]">
-        urls become linked topic memory
+
+      {/* Top gradient line */}
+      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(0,219,233,0.7),transparent)] opacity-60" />
+
+      {/* ── Title badge (top-left) ── */}
+      <div className="pointer-events-none absolute left-5 top-5 flex items-center gap-2.5 border border-cyan-400/20 bg-black/60 px-3 py-2 backdrop-blur-sm">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" />
+        <span className="text-[10px] uppercase tracking-[0.22em] text-cyan-300" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+          Neural memory mesh — live
+        </span>
       </div>
-      <div className="pointer-events-none absolute left-8 bottom-8 max-w-[18rem] border border-white/10 bg-black/45 px-4 py-3 text-[11px] leading-5 text-[#c8d4d7]">
-        Each source Beacon sees becomes another node in the second-brain graph. Repeated runs strengthen the mesh instead of starting over.
+
+      {/* ── Layer legend (top-right) ── */}
+      <div className="pointer-events-none absolute right-5 top-5 flex flex-col gap-1.5 border border-white/8 bg-black/60 px-3 py-3 backdrop-blur-sm">
+        <div className="mb-1 text-[9px] uppercase tracking-[0.2em] text-[#5a6e72]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+          Active layers
+        </div>
+        {LAYER_LEGEND.map((l) => (
+          <div key={l.label} className="flex items-center gap-2">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${l.dot}`} />
+            <span className="text-[10px] text-[#c4d4d7]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              <span style={{ color: l.color }}>{l.label}</span>
+              <span className="ml-1 text-[#5a6e72]">— {l.role}</span>
+            </span>
+          </div>
+        ))}
       </div>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0b0d10] to-transparent" />
+
+      {/* ── Signal annotation (mid-left) ── */}
+      <div className="pointer-events-none absolute left-5 bottom-[160px] hidden border border-white/8 bg-black/55 px-3 py-2.5 backdrop-blur-sm md:block max-w-[200px]">
+        <div className="text-[9px] uppercase tracking-[0.2em] text-[#5a6e72] mb-1" style={{ fontFamily: 'var(--font-space-grotesk)' }}>Signal packets</div>
+        <p className="text-[11px] leading-[1.55] text-[#b4c8cc]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+          Each moving dot is a data flow — source URLs entering the context layer, facts persisting to memory.
+        </p>
+      </div>
+
+      {/* ── Memory depth heatmap (bottom-right) ── */}
+      <div className="pointer-events-none absolute right-5 bottom-5 hidden flex-col gap-2 md:flex">
+        <div className="text-[9px] uppercase tracking-[0.2em] text-[#5a6e72]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+          Memory depth — 6 runs
+        </div>
+        <div className="flex items-end gap-1">
+          {HEATMAP_RUNS.map((runDepths, runIdx) => (
+            <div key={runIdx} className="flex flex-col-reverse gap-0.5">
+              {runDepths.map((opacity, layerIdx) => (
+                <div
+                  key={layerIdx}
+                  className="h-3 w-3 border border-white/5"
+                  style={{
+                    background: HEATMAP_COLORS[layerIdx],
+                    opacity,
+                    animationDelay: `${runIdx * 0.12 + layerIdx * 0.04}s`,
+                  }}
+                />
+              ))}
+              <div className="text-center text-[8px] text-[#3a4a4c]" style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>
+                R{runIdx + 1}
+              </div>
+            </div>
+          ))}
+          <div className="ml-1 flex flex-col-reverse gap-0.5 pb-4">
+            {LAYER_LEGEND.map((l, i) => (
+              <div key={i} className="flex items-center gap-1 h-3">
+                <span className="text-[8px]" style={{ color: l.color, fontFamily: 'var(--font-space-grotesk)' }}>{l.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-between text-[8px] text-[#3a4a4c]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+          <span>sparse</span>
+          <span>dense →</span>
+        </div>
+      </div>
+
+      {/* ── Bottom summary bar ── */}
+      <div className="border-t border-white/8 bg-black/40 px-5 py-3 backdrop-blur-sm">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          {[
+            { label: 'Core', value: 'Workflow orchestrator — all layers converge here' },
+            { label: 'Nodes', value: 'Context · Memory · Harness · MCP · CLI · Runs' },
+            { label: 'Signal', value: 'Data flows continuously — each packet is a real transfer' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-2 text-[11px]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              <span className="font-bold uppercase tracking-[0.15em] text-cyan-400">{item.label}</span>
+              <span className="text-[#8ea1a5]">{item.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom fade into background */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-[48px] h-16 bg-gradient-to-t from-[#0b0d10] to-transparent" />
     </div>
   )
 }

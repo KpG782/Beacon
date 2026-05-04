@@ -1,5 +1,5 @@
 import { getRun } from 'workflow/api'
-import type { ResearchReport, QueryPlan } from '@/lib/types'
+import type { ResearchReport, QueryPlan, WebhookDeliveryState } from '@/lib/types'
 
 const BRIEF_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 const SYSTEM_SCOPE = '__system__'
@@ -23,6 +23,8 @@ export interface BriefRecord {
   frameworkId?: string
   queryPlan?: QueryPlan
   deltaUrls?: string[]
+  webhookUrl?: string
+  webhookDelivery?: WebhookDeliveryState
 }
 
 export interface LogEntry {
@@ -67,6 +69,7 @@ async function upstash(commands: (string | number)[][]): Promise<unknown[]> {
 
 const LOG_REDIS_KEY = 'beacon:logs'
 const LOG_REDIS_CAP = 1000
+const WEBHOOK_MAX_ATTEMPTS = 3
 
 async function persistLog(log: LogEntry): Promise<void> {
   try {
@@ -174,11 +177,140 @@ async function updateBrief(runId: string, update: Partial<BriefRecord>): Promise
   return next
 }
 
+function shouldDeliverWebhook(record: BriefRecord): boolean {
+  if (!record.webhookUrl || record.status !== 'complete') return false
+  if (!record.webhookDelivery) return true
+  if (record.webhookDelivery.status === 'pending') return true
+  return record.webhookDelivery.status === 'failed' && record.webhookDelivery.attempts < WEBHOOK_MAX_ATTEMPTS
+}
+
+async function deliverWebhook(record: BriefRecord): Promise<BriefRecord> {
+  const attempts = (record.webhookDelivery?.attempts ?? 0) + 1
+  const lastAttemptAt = new Date().toISOString()
+
+  const payload = {
+    event: 'research.completed',
+    runId: record.runId,
+    topic: record.topic,
+    status: record.status,
+    source: record.source,
+    recurring: record.recurring,
+    frameworkId: record.frameworkId ?? null,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt ?? null,
+    report: {
+      content: record.report ?? null,
+      sources: record.sources ?? [],
+      runCount: record.runCount,
+      hasMemory: record.hasMemory,
+      queryPlan: record.queryPlan ?? null,
+      deltaUrls: record.deltaUrls ?? [],
+    },
+  }
+
+  try {
+    const res = await fetch(record.webhookUrl!, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    if (!res.ok) {
+      const failed = await updateBrief(record.runId, {
+        webhookDelivery: {
+          status: 'failed',
+          attempts,
+          lastAttemptAt,
+          responseStatus: res.status,
+          error: `HTTP ${res.status}`,
+        },
+      })
+      const next = failed ?? {
+        ...record,
+        webhookDelivery: {
+          status: 'failed' as const,
+          attempts,
+          lastAttemptAt,
+          responseStatus: res.status,
+          error: `HTTP ${res.status}`,
+        },
+      }
+      appendLog({
+        userId: record.userId,
+        level: 'warn',
+        category: 'workflow',
+        message: `Webhook delivery failed for "${record.topic}" — HTTP ${res.status}`,
+        runId: record.runId,
+      })
+      return next
+    }
+
+    const deliveredAt = new Date().toISOString()
+    const delivered = await updateBrief(record.runId, {
+      webhookDelivery: {
+        status: 'delivered',
+        attempts,
+        lastAttemptAt,
+        deliveredAt,
+        responseStatus: res.status,
+      },
+    })
+    const next = delivered ?? {
+      ...record,
+      webhookDelivery: {
+        status: 'delivered' as const,
+        attempts,
+        lastAttemptAt,
+        deliveredAt,
+        responseStatus: res.status,
+      },
+    }
+    appendLog({
+      userId: record.userId,
+      level: 'success',
+      category: 'workflow',
+      message: `Webhook delivered for "${record.topic}"`,
+      runId: record.runId,
+    })
+    return next
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown webhook error'
+    const failed = await updateBrief(record.runId, {
+      webhookDelivery: {
+        status: 'failed',
+        attempts,
+        lastAttemptAt,
+        error: message,
+      },
+    })
+    const next = failed ?? {
+      ...record,
+      webhookDelivery: {
+        status: 'failed' as const,
+        attempts,
+        lastAttemptAt,
+        error: message,
+      },
+    }
+    appendLog({
+      userId: record.userId,
+      level: 'warn',
+      category: 'workflow',
+      message: `Webhook delivery failed for "${record.topic}" — ${message}`,
+      runId: record.runId,
+    })
+    return next
+  }
+}
+
 export async function syncBriefRecord(runId: string): Promise<BriefRecord | null> {
   const record = await hydrateBriefRecord(runId)
   if (!record) return null
 
   if (record.status === 'complete' || record.status === 'failed') {
+    if (shouldDeliverWebhook(record)) {
+      return deliverWebhook(record)
+    }
     return record
   }
 
@@ -207,6 +339,10 @@ export async function syncBriefRecord(runId: string): Promise<BriefRecord | null
           message: `Workflow completed: "${next.topic}" — report ready with ${next.sources?.length ?? 0} sources`,
           runId,
         })
+      }
+
+      if (next && shouldDeliverWebhook(next)) {
+        return deliverWebhook(next)
       }
 
       return next
