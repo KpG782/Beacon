@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import FrameworkBanner from '@/components/research/framework-banner'
 import { briefToMarkdown, sourcesToCsv, briefToJson, triggerDownload } from '@/lib/export'
+import { FRAMEWORKS_BY_ID } from '@/lib/frameworks'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,28 @@ interface BriefStatus {
   deltaUrls?: string[]
   queryPlan?: { queries: QueryEntry[] }
   frameworkId?: string
+  frameworkIds?: string[]
   recurring?: boolean
+  comparative?: {
+    frameworkIds: string[]
+    finalScore: number
+    confidenceScore: number
+    disagreementScore: number
+    finalVerdict: string
+    consensusSummary: string
+    disagreementSummary: string
+    frameworkScorecards: Array<{
+      frameworkId: string
+      frameworkName: string
+      score: number
+      confidence: number
+      verdict: string
+      strengths: string[]
+      risks: string[]
+      evidence: string[]
+      notes: string
+    }>
+  }
 }
 
 interface RunLog {
@@ -47,7 +69,7 @@ interface RunLog {
   runId?: string
 }
 
-type Tab = 'report' | 'sources' | 'plan'
+type Tab = 'report' | 'sources' | 'plan' | 'scorecard'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -442,6 +464,7 @@ export default function BriefDetail() {
   const hasDelta    = (data?.deltaUrls?.length ?? 0) > 0
   const wc          = data?.report ? wordCount(data.report) : 0
   const rt          = data?.report ? readingTime(data.report) : 0
+  const comparative = data?.comparative ?? null
 
   function filteredSources() {
     const base = srcFilter === 'new' ? newSources : srcFilter === 'known' ? knownSources : allSources
@@ -620,10 +643,11 @@ export default function BriefDetail() {
         {/* Tab strip */}
         <div className="flex gap-0 mt-4 -mb-3 border-b border-[#262626]">
           {([
-            { key: 'report',  label: 'Report',        count: null },
-            { key: 'sources', label: 'Sources',        count: allSources.length || null },
-            { key: 'plan',    label: 'Research Plan',  count: data.queryPlan?.queries.length || null },
-          ] as const).map(t => (
+            { key: 'report', label: 'Report', count: null },
+            comparative ? { key: 'scorecard', label: 'Scorecard', count: comparative.frameworkScorecards.length } : null,
+            { key: 'sources', label: 'Sources', count: allSources.length || null },
+            { key: 'plan', label: 'Research Plan', count: data.queryPlan?.queries.length || null },
+          ].filter(Boolean) as Array<{ key: Tab; label: string; count: number | null }>).map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
@@ -662,7 +686,7 @@ export default function BriefDetail() {
                 <div className="text-[9px] font-bold tracking-widest uppercase text-[#849495] mb-3"
                      style={{ fontFamily: 'var(--font-space-grotesk)' }}>Lifecycle</div>
                 <div className="flex flex-col gap-2">
-                  {LIFECYCLE.map((step, i) => {
+                  {LIFECYCLE.map((step) => {
                     const state = lifecycleState(step.id, data)
                     return (
                       <div key={step.id} className="flex items-center gap-2.5">
@@ -827,6 +851,105 @@ export default function BriefDetail() {
                   <p className="text-[11px] text-[#3b494b] mt-1" style={{ fontFamily: 'var(--font-space-grotesk)' }}>Polling every 3 seconds</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ── SCORECARD TAB ── */}
+        {tab === 'scorecard' && comparative && (
+          <div className="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)] gap-6 items-start">
+            <div className="flex flex-col gap-3">
+              <div className="border border-[#262626] bg-[#111111] p-4">
+                <div className="text-[9px] font-bold tracking-widest uppercase text-[#849495] mb-3"
+                     style={{ fontFamily: 'var(--font-space-grotesk)' }}>Consensus Verdict</div>
+                <div className="text-[18px] text-[#e5e2e3] mb-2" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  {comparative.finalVerdict}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'Score', value: `${comparative.finalScore}` },
+                    { label: 'Conf.', value: `${Math.round(comparative.confidenceScore * 100)}%` },
+                    { label: 'Disagree', value: `${comparative.disagreementScore}` },
+                  ].map((item) => (
+                    <div key={item.label} className="border border-[#262626] bg-[#0a0a0a] px-3 py-2">
+                      <div className="text-[16px] text-[#e5e2e3] tabular-nums">{item.value}</div>
+                      <div className="text-[9px] uppercase tracking-wider text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                        {item.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-[12px] leading-6 text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  {comparative.consensusSummary}
+                </p>
+              </div>
+
+              <div className="border border-[#262626] bg-[#111111] p-4">
+                <div className="text-[9px] font-bold tracking-widest uppercase text-[#849495] mb-2"
+                     style={{ fontFamily: 'var(--font-space-grotesk)' }}>Disagreement Summary</div>
+                <p className="text-[12px] leading-6 text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  {comparative.disagreementSummary}
+                </p>
+              </div>
+            </div>
+
+            <div className="border border-[#262626] bg-[#111111] overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-[#262626] flex items-center justify-between gap-3">
+                <span className="text-[9px] font-bold tracking-widest uppercase text-[#849495]"
+                      style={{ fontFamily: 'var(--font-space-grotesk)' }}>Framework Comparison Matrix</span>
+                <span className="text-[10px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  {comparative.frameworkScorecards.length} evaluators
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left">
+                  <thead className="border-b border-[#262626] bg-[#0a0a0a]">
+                    <tr>
+                      {['Framework', 'Score', 'Confidence', 'Verdict', 'Top Risk', 'Evidence'].map((label) => (
+                        <th
+                          key={label}
+                          className="px-4 py-3 text-[10px] font-bold tracking-widest uppercase text-[#737373]"
+                          style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                        >
+                          {label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparative.frameworkScorecards.map((card) => {
+                      const disagreement = Math.abs(card.score - comparative.finalScore) >= 15
+                      const frameworkName = FRAMEWORKS_BY_ID.get(card.frameworkId)?.name ?? card.frameworkName
+                      return (
+                        <tr
+                          key={card.frameworkId}
+                          className={`border-b border-[#1a1a1a] ${disagreement ? 'bg-[#f97316]/[0.04]' : 'bg-transparent'}`}
+                        >
+                          <td className="px-4 py-3 text-[12px] text-[#e5e2e3]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                            {frameworkName}
+                          </td>
+                          <td className="px-4 py-3 text-[12px] tabular-nums text-[#e5e2e3]">{card.score}</td>
+                          <td className="px-4 py-3 text-[12px] tabular-nums text-[#e5e2e3]">{Math.round(card.confidence * 100)}%</td>
+                          <td className="px-4 py-3 text-[11px]">
+                            <span className={`border px-2 py-1 uppercase tracking-[0.12em] ${
+                              disagreement ? 'border-[#f97316]/40 text-[#f97316]' : 'border-cyan-400/20 text-cyan-300'
+                            }`} style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                              {card.verdict}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-[12px] leading-6 text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                            {card.risks[0] ?? 'No primary risk identified.'}
+                          </td>
+                          <td className="px-4 py-3 text-[11px] text-[#737373]" style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>
+                            {card.evidence.join(', ') || '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

@@ -22,9 +22,34 @@ export interface ResearchBrief {
   mode?: 'full' | 'delta'
   source?: 'slack' | 'github' | 'discord' | 'dashboard' | 'mcp'
   frameworkId?: string
+  frameworkIds?: string[]   // consensus mode: 2-3 frameworks evaluated in parallel
   tokenBudget?: TokenBudget
   userKeys?: UserKeys
   webhookUrl?: string
+}
+
+// Per-framework structured evaluation — produced by consensus mode
+export interface FrameworkScorecard {
+  frameworkId: string
+  frameworkName: string
+  score: number              // 0-100
+  confidence: number         // 0.0-1.0
+  verdict: 'strong' | 'promising' | 'conditional' | 'caution' | 'weak'
+  strengths: string[]
+  risks: string[]
+  evidence: string[]         // source index refs like "[1]", "[3]"
+  notes: string
+}
+
+export interface ComparativeResearchReport {
+  frameworkIds: string[]
+  frameworkScorecards: FrameworkScorecard[]
+  finalScore: number
+  confidenceScore: number
+  disagreementScore: number
+  finalVerdict: string
+  consensusSummary: string
+  disagreementSummary: string
 }
 
 export interface ResearchReport {
@@ -37,6 +62,7 @@ export interface ResearchReport {
   isDelta: boolean
   queryPlan?: QueryPlan
   deltaUrls?: string[]
+  comparative?: ComparativeResearchReport
 }
 
 export interface Source {

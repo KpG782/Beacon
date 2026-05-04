@@ -1,5 +1,5 @@
 import { getRun } from 'workflow/api'
-import type { ResearchReport, QueryPlan, WebhookDeliveryState } from '@/lib/types'
+import type { ComparativeResearchReport, QueryPlan, ResearchReport, WebhookDeliveryState } from '@/lib/types'
 
 const BRIEF_TTL_SECONDS = 60 * 60 * 24 * 30 // 30 days
 const SYSTEM_SCOPE = '__system__'
@@ -21,8 +21,10 @@ export interface BriefRecord {
   sources?: Array<{ title?: string; url: string; snippet?: string; index?: number; engine?: string }>
   error?: string
   frameworkId?: string
+  frameworkIds?: string[]
   queryPlan?: QueryPlan
   deltaUrls?: string[]
+  comparative?: ComparativeResearchReport
   webhookUrl?: string
   webhookDelivery?: WebhookDeliveryState
 }
@@ -196,6 +198,7 @@ async function deliverWebhook(record: BriefRecord): Promise<BriefRecord> {
     source: record.source,
     recurring: record.recurring,
     frameworkId: record.frameworkId ?? null,
+    frameworkIds: record.frameworkIds ?? [],
     createdAt: record.createdAt,
     updatedAt: record.updatedAt ?? null,
     report: {
@@ -205,6 +208,7 @@ async function deliverWebhook(record: BriefRecord): Promise<BriefRecord> {
       hasMemory: record.hasMemory,
       queryPlan: record.queryPlan ?? null,
       deltaUrls: record.deltaUrls ?? [],
+      comparative: record.comparative ?? null,
     },
   }
 
@@ -329,6 +333,7 @@ export async function syncBriefRecord(runId: string): Promise<BriefRecord | null
         runCount: report.runCount,
         queryPlan: report.queryPlan,
         deltaUrls: report.deltaUrls,
+        comparative: report.comparative,
       })
 
       if (next) {

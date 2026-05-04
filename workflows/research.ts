@@ -15,7 +15,15 @@ import {
   buildMemoryContext,
 } from '@/lib/memory'
 import { FRAMEWORKS_BY_ID } from '@/lib/frameworks'
-import type { ResearchBrief, ResearchReport, QueryPlan, AgentMemory, TokenBudget } from '@/lib/types'
+import type {
+  AgentMemory,
+  ComparativeResearchReport,
+  FrameworkScorecard,
+  QueryPlan,
+  ResearchBrief,
+  ResearchReport,
+  TokenBudget,
+} from '@/lib/types'
 
 // ─── Depth-driven config ──────────────────────────────────────────────────────
 // All tunable parameters flow from a single `depth` value so there is one
@@ -98,6 +106,93 @@ type SerpBlock = {
   results?: Array<{ title?: string; url?: string; snippet?: string; engine?: string; date?: string | null }>
 }
 
+function normalizeCitationRefs(values: string[]): string[] {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => value.match(/\[(\d+)\]/)?.[0] ?? null)
+        .filter((value): value is string => !!value)
+    )
+  ).slice(0, 6)
+}
+
+function normalizeScorecard(
+  frameworkId: string,
+  raw: Partial<FrameworkScorecard>,
+  fallbackName: string
+): FrameworkScorecard {
+  const frameworkName = typeof raw.frameworkName === 'string' && raw.frameworkName.trim()
+    ? raw.frameworkName.trim()
+    : fallbackName
+  const score = typeof raw.score === 'number' && Number.isFinite(raw.score)
+    ? Math.min(100, Math.max(0, Math.round(raw.score)))
+    : 50
+  const evidence = normalizeCitationRefs(Array.isArray(raw.evidence) ? raw.evidence : [])
+  const uncappedConfidence = typeof raw.confidence === 'number' && Number.isFinite(raw.confidence)
+    ? Math.min(1, Math.max(0, raw.confidence))
+    : 0.55
+  const confidence = evidence.length >= 3 ? uncappedConfidence : Math.min(0.85, uncappedConfidence)
+  const validVerdicts: FrameworkScorecard['verdict'][] = ['strong', 'promising', 'conditional', 'caution', 'weak']
+  const verdict = validVerdicts.includes(raw.verdict as FrameworkScorecard['verdict'])
+    ? (raw.verdict as FrameworkScorecard['verdict'])
+    : score >= 80
+      ? 'strong'
+      : score >= 65
+        ? 'promising'
+        : score >= 50
+          ? 'conditional'
+          : score >= 35
+            ? 'caution'
+            : 'weak'
+
+  const normalizeList = (items: unknown, fallback: string) =>
+    Array.isArray(items) && items.length > 0
+      ? items
+          .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+          .slice(0, 4)
+      : [fallback]
+
+  return {
+    frameworkId,
+    frameworkName,
+    score,
+    confidence: Number(confidence.toFixed(2)),
+    verdict,
+    strengths: normalizeList(raw.strengths, 'Insufficient evidence to claim a strong advantage. [1]'),
+    risks: normalizeList(raw.risks, 'Insufficient evidence to claim a strong risk. [1]'),
+    evidence,
+    notes: typeof raw.notes === 'string' && raw.notes.trim()
+      ? raw.notes.trim()
+      : 'Structured scorecard generated from the shared evidence base.',
+  }
+}
+
+function comparativeToMarkdown(comparative: ComparativeResearchReport): string {
+  return `## Framework Consensus Verdict
+
+**Final verdict:** ${comparative.finalVerdict}
+
+**Consensus score:** ${comparative.finalScore}/100  
+**Confidence:** ${Math.round(comparative.confidenceScore * 100)}%  
+**Disagreement:** ${comparative.disagreementScore}/100
+
+## Consensus Summary
+${comparative.consensusSummary}
+
+## Where Frameworks Disagree
+${comparative.disagreementSummary}
+
+## Scorecards
+${comparative.frameworkScorecards
+  .map((card) => `- **${card.frameworkName}**: ${card.score}/100 · confidence ${Math.round(card.confidence * 100)}% · ${card.verdict}`)
+  .join('\n')}
+
+## Top Risks By Framework
+${comparative.frameworkScorecards
+  .map((card) => `- **${card.frameworkName}**: ${card.risks[0] ?? 'No primary risk identified.'}`)
+  .join('\n')}`
+}
+
 // ─── Main durable workflow ────────────────────────────────────────────────────
 
 export async function researchAgent(brief: ResearchBrief): Promise<ResearchReport> {
@@ -111,10 +206,30 @@ export async function researchAgent(brief: ResearchBrief): Promise<ResearchRepor
 
   const cfg = researchConfig(brief.depth, brief.tokenBudget)
   const seenSet = new Set(memory?.seenUrls ?? [])
+  const consensusFrameworkIds = cfg.multiTrack
+    ? Array.from(new Set((brief.frameworkIds ?? []).filter((frameworkId) => FRAMEWORKS_BY_ID.has(frameworkId)))).slice(0, 3)
+    : []
   let allRaw: SerpBlock[]
   let report: ResearchReport
 
-  if (cfg.multiTrack) {
+  if (cfg.multiTrack && consensusFrameworkIds.length >= 2) {
+    const rawResults = await Promise.all(
+      plan.queries.map((q) => runSerpQuery(q.q, q.engine, brief.userKeys?.serpApiKey, cfg.resultsPerQuery))
+    ) as SerpBlock[]
+
+    allRaw = rawResults
+    const allNewUrls = extractAllUrls(rawResults).filter((u) => !seenSet.has(u))
+    const freshResults = memory ? filterSeenUrls(rawResults, memory.seenUrls) : rawResults
+
+    const frameworkScorecards = await Promise.all(
+      consensusFrameworkIds.map((frameworkId) => synthesizeTrack(frameworkId, freshResults, brief, memory))
+    ) as FrameworkScorecard[]
+
+    report = await validateAndMerge(
+      { scorecards: frameworkScorecards, frameworkIds: consensusFrameworkIds },
+      brief, memory, plan, allRaw, allNewUrls
+    )
+  } else if (cfg.multiTrack) {
     // ── Deep mode: 3 parallel specialized agents + validation ─────────────────
     const tracks = groupByTrack(plan.queries)
     const serpKey = brief.userKeys?.serpApiKey
@@ -143,7 +258,7 @@ export async function researchAgent(brief: ResearchBrief): Promise<ResearchRepor
       synthesizeTrack('exploration', freshExploRaw, brief, memory),
       synthesizeTrack('competitive', freshCompRaw, brief, memory),
       synthesizeTrack('signals', freshSigRaw, brief, memory),
-    ])
+    ]) as [string, string, string]
 
     // [Context + Harness] Phase C: validator cross-checks and produces the final report
     report = await validateAndMerge(
@@ -189,7 +304,6 @@ export async function researchAgent(brief: ResearchBrief): Promise<ResearchRepor
 
   // [Harness] Step 6: sleep then rerun (zero compute during sleep)
   if (brief.recurring && brief.recurringInterval) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await sleep(brief.recurringInterval as any)
     return researchAgent({ ...brief, mode: 'delta' })
   }
@@ -353,21 +467,93 @@ const TRACK_META = {
 } as const
 
 async function synthesizeTrack(
-  trackName: 'exploration' | 'competitive' | 'signals',
+  trackName: 'exploration' | 'competitive' | 'signals' | string,
   trackResults: SerpBlock[],
   brief: ResearchBrief,
   memory: AgentMemory | null
-): Promise<string> {
+): Promise<string | FrameworkScorecard> {
   'use step'
   // [Context] — intermediate synthesis for one research angle; feeds validateAndMerge
 
   const start = Date.now()
   const cfg = researchConfig(brief.depth, brief.tokenBudget)
-  const meta = TRACK_META[trackName]
   const runCount = (memory?.runCount ?? 0) + 1
   const isDelta = runCount > 1
   const synth = createSynthModel(brief.userKeys?.groqApiKey)
   const context = compressSerpResults(trackResults, { maxResults: cfg.resultsPerQuery * (trackResults.length || 5) })
+
+  if (FRAMEWORKS_BY_ID.has(trackName)) {
+    const framework = FRAMEWORKS_BY_ID.get(trackName)!
+    let text = ''
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await generateText({
+        model: synth,
+        system: `You are a research evaluator working in framework consensus mode.
+
+Framework: ${framework.name}
+Research objective: ${brief.objective || 'Evaluate the topic using the framework lens.'}
+Priority focus: ${brief.focus || 'General strategic evaluation'}
+${isDelta
+  ? `Run #${runCount}. Focus on what changed since ${new Date(memory!.lastRunAt).toLocaleDateString()}, but still judge the topic holistically.`
+  : 'This is the first run. Judge the topic holistically using the framework lens.'}
+
+Use this synthesis instruction:
+${framework.synthesisHint}
+
+Return ONLY valid JSON:
+{
+  "frameworkName": "${framework.name}",
+  "score": 0,
+  "confidence": 0.0,
+  "verdict": "strong|promising|conditional|caution|weak",
+  "strengths": ["point with citation [1]"],
+  "risks": ["point with citation [2]"],
+  "evidence": ["[1]", "[2]", "[3]"],
+  "notes": "short explanation"
+}
+
+Rules:
+- score must be 0-100
+- confidence must be 0.0-1.0
+- every strength and risk must contain at least one citation index like [2]
+- list 2-4 strengths and 2-4 risks
+- include only citation indices that exist in the evidence
+- be conservative if evidence is thin`,
+        prompt: `Topic: ${brief.topic}
+
+Evidence:
+${context}`,
+        maxTokens: cfg.trackSynthTokens,
+      })
+      text = response.text
+      if (text.trim().startsWith('{')) break
+    }
+
+    try {
+      const parsed = JSON.parse(text.replace(/```json|```/g, '').trim()) as Partial<FrameworkScorecard>
+      const scorecard = normalizeScorecard(trackName, parsed, framework.name)
+      console.log(
+        `[beacon:step] synthesizeTrack framework="${trackName}" topic="${brief.topic}" ms=${Date.now() - start}`
+      )
+      return scorecard
+    } catch {
+      const fallback = normalizeScorecard(trackName, {
+        frameworkName: framework.name,
+        score: 50,
+        confidence: 0.45,
+        verdict: 'conditional',
+        strengths: ['Shared evidence suggests moderate potential, but the framework-specific case is thin. [1]'],
+        risks: ['Evidence density is too low to make a high-confidence framework judgment. [1]'],
+        evidence: ['[1]'],
+        notes: 'Fallback scorecard used because the evaluator did not return valid JSON.',
+      }, framework.name)
+      console.error(`[beacon:self-heal] framework scorecard fallback for "${trackName}"`)
+      return fallback
+    }
+  }
+
+  const meta = TRACK_META[trackName as keyof typeof TRACK_META]
 
   const systemPrompt = `You are a research analyst writing one section of a multi-agent report.
 
@@ -426,7 +612,9 @@ ${context}`
 // ─── Deep mode: cross-validation + final merge ───────────────────────────────
 
 async function validateAndMerge(
-  tracks: { exploration: string; competitive: string; signals: string },
+  tracks:
+    | { exploration: string; competitive: string; signals: string }
+    | { scorecards: FrameworkScorecard[]; frameworkIds: string[] },
   brief: ResearchBrief,
   memory: AgentMemory | null,
   queryPlan: QueryPlan,
@@ -441,8 +629,99 @@ async function validateAndMerge(
   const cfg = researchConfig(brief.depth, brief.tokenBudget)
   const runCount = (memory?.runCount ?? 0) + 1
   const isDelta = runCount > 1
-  const framework = brief.frameworkId ? FRAMEWORKS_BY_ID.get(brief.frameworkId) : null
   const synth = createSynthModel(brief.userKeys?.groqApiKey)
+
+  if ('scorecards' in tracks) {
+    const { scorecards, frameworkIds } = tracks
+    const { text } = await generateText({
+      model: synth,
+      system: `You are a senior research analyst merging structured framework scorecards.
+
+Topic: ${brief.topic}
+Objective: ${brief.objective || 'Compare framework judgments and produce one final verdict.'}
+${brief.focus ? `Priority focus: ${brief.focus}` : ''}
+${isDelta
+  ? `Run #${runCount}. Treat changes since the last run as important, but do not ignore the whole evidence base.`
+  : 'This is the first run.'}
+
+Return ONLY valid JSON:
+{
+  "finalScore": 0,
+  "confidenceScore": 0.0,
+  "disagreementScore": 0,
+  "finalVerdict": "short verdict",
+  "consensusSummary": "2-4 sentence summary",
+  "disagreementSummary": "2-4 sentence disagreement summary"
+}
+
+Rules:
+- finalScore must be 0-100
+- confidenceScore must be 0.0-1.0
+- disagreementScore must be 0-100
+- higher disagreementScore means larger divergence in scores, verdicts, or risks
+- be conservative when framework confidence is weak`,
+      prompt: JSON.stringify(scorecards, null, 2),
+      maxTokens: cfg.finalSynthTokens,
+    })
+
+    let parsed: Partial<ComparativeResearchReport> = {}
+    try {
+      parsed = JSON.parse(text.replace(/```json|```/g, '').trim()) as Partial<ComparativeResearchReport>
+    } catch {
+      console.error('[beacon:self-heal] comparative merge JSON parse failed')
+    }
+
+    const comparative: ComparativeResearchReport = {
+      frameworkIds,
+      frameworkScorecards: scorecards,
+      finalScore: typeof parsed.finalScore === 'number' && Number.isFinite(parsed.finalScore)
+        ? Math.min(100, Math.max(0, Math.round(parsed.finalScore)))
+        : Math.round(scorecards.reduce((sum, card) => sum + card.score, 0) / scorecards.length),
+      confidenceScore: typeof parsed.confidenceScore === 'number' && Number.isFinite(parsed.confidenceScore)
+        ? Number(Math.min(1, Math.max(0, parsed.confidenceScore)).toFixed(2))
+        : Number((scorecards.reduce((sum, card) => sum + card.confidence, 0) / scorecards.length).toFixed(2)),
+      disagreementScore: typeof parsed.disagreementScore === 'number' && Number.isFinite(parsed.disagreementScore)
+        ? Math.min(100, Math.max(0, Math.round(parsed.disagreementScore)))
+        : Math.min(100, Math.round(
+            Math.max(...scorecards.map((card) => card.score)) - Math.min(...scorecards.map((card) => card.score))
+          )),
+      finalVerdict: typeof parsed.finalVerdict === 'string' && parsed.finalVerdict.trim()
+        ? parsed.finalVerdict.trim()
+        : 'Mixed but promising with framework disagreement worth reviewing.',
+      consensusSummary: typeof parsed.consensusSummary === 'string' && parsed.consensusSummary.trim()
+        ? parsed.consensusSummary.trim()
+        : 'The framework panel sees meaningful opportunity, but the final verdict depends on which lens you prioritize most.',
+      disagreementSummary: typeof parsed.disagreementSummary === 'string' && parsed.disagreementSummary.trim()
+        ? parsed.disagreementSummary.trim()
+        : 'Frameworks disagree on whether the main constraint is user pain, strategic attractiveness, or execution risk.',
+    }
+
+    const sources = allRaw
+      .flatMap((r) => r.results ?? [])
+      .map((r, i) => ({
+        index: i + 1,
+        title: r.title ?? '',
+        url: r.url ?? '',
+        snippet: r.snippet ?? '',
+        engine: r.engine ?? 'google',
+      }))
+      .slice(0, cfg.sourceLimit)
+
+    return {
+      topic: brief.topic,
+      summary: comparative.consensusSummary,
+      content: comparativeToMarkdown(comparative),
+      sources,
+      generatedAt: new Date().toISOString(),
+      runCount,
+      isDelta,
+      queryPlan,
+      deltaUrls,
+      comparative,
+    }
+  }
+
+  const framework = brief.frameworkId ? FRAMEWORKS_BY_ID.get(brief.frameworkId) : null
   const reportStyleGuidance = {
     executive: 'Write for a busy operator. Decision-oriented, scannable, no fluff.',
     bullet: 'Bullets and terse findings over narrative prose.',

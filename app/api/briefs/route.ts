@@ -54,6 +54,16 @@ export async function POST(req: NextRequest) {
   const frameworkId = typeof body.frameworkId === 'string' && FRAMEWORK_IDS.has(body.frameworkId)
     ? body.frameworkId
     : undefined
+  const rawFrameworkIds: unknown[] = Array.isArray(body.frameworkIds) ? body.frameworkIds : []
+  const validatedFrameworkIds: string[] = []
+  for (const value of rawFrameworkIds) {
+    if (typeof value === 'string' && FRAMEWORK_IDS.has(value) && !validatedFrameworkIds.includes(value)) {
+      validatedFrameworkIds.push(value)
+    }
+  }
+  const frameworkIds: string[] | undefined = validatedFrameworkIds.length > 0
+    ? validatedFrameworkIds.slice(0, 3)
+    : undefined
 
   // Token budget — let users with higher Groq tier limits raise the output caps.
   // Clamp to [500, 8000] so a typo can't send a malformed request to Groq.
@@ -109,6 +119,7 @@ export async function POST(req: NextRequest) {
     reportStyle,
     recurring,
     frameworkId,
+    frameworkIds: frameworkIds && frameworkIds.length >= 2 ? frameworkIds : undefined,
     tokenBudget: validTokenBudget,
     userKeys,
     webhookUrl: validWebhookUrl,
@@ -129,6 +140,7 @@ export async function POST(req: NextRequest) {
     createdAt: new Date().toISOString(),
     currentStep: 'loadMemory',
     frameworkId: brief.frameworkId,
+    frameworkIds: brief.frameworkIds,
     webhookUrl: brief.webhookUrl,
     webhookDelivery: brief.webhookUrl ? { status: 'pending' as const, attempts: 0 } : undefined,
   }

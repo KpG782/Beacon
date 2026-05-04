@@ -191,6 +191,8 @@ export default function NewBriefPage() {
   const [reportStyle, setReportStyle] = useState<'executive' | 'bullet' | 'memo' | 'framework'>('executive')
   const [recurring, setRecurring] = useState(false)
   const [frameworkId, setFrameworkId] = useState<string | null>(null)
+  const [frameworkIds, setFrameworkIds] = useState<string[]>([])
+  const [consensusMode, setConsensusMode] = useState(false)
   const [tokenBudgetPreset, setTokenBudgetPreset] = useState<TokenPresetId>('standard')
   const [trackSynthTokens, setTrackSynthTokens] = useState(1000)
   const [finalSynthTokens, setFinalSynthTokens] = useState(1800)
@@ -215,6 +217,9 @@ export default function NewBriefPage() {
   const selectedFramework: FrameworkOption | null = frameworkId
     ? (FRAMEWORKS.find((f) => f.id === frameworkId) ?? null)
     : null
+  const selectedConsensusFrameworks = frameworkIds
+    .map((id) => FRAMEWORKS.find((framework) => framework.id === id) ?? null)
+    .filter((framework): framework is FrameworkOption => !!framework)
 
   const filteredFrameworks = fwSearch.trim()
     ? FRAMEWORKS.filter((f) =>
@@ -237,6 +242,8 @@ export default function NewBriefPage() {
           timeframe?: '7d' | '30d' | '90d' | 'all'
           reportStyle?: 'executive' | 'bullet' | 'memo' | 'framework'
           frameworkId?: string
+          frameworkIds?: string[]
+          consensusMode?: boolean
           tokenBudgetPreset?: string
           trackSynthTokens?: number
           finalSynthTokens?: number
@@ -250,6 +257,8 @@ export default function NewBriefPage() {
         if (d.timeframe) setTimeframe(d.timeframe)
         if (d.reportStyle) setReportStyle(d.reportStyle)
         if (d.frameworkId) setFrameworkId(d.frameworkId)
+        if (Array.isArray(d.frameworkIds)) setFrameworkIds(d.frameworkIds.filter((value) => typeof value === 'string').slice(0, 3))
+        if (typeof d.consensusMode === 'boolean') setConsensusMode(d.consensusMode)
         if (d.tokenBudgetPreset) setTokenBudgetPreset(d.tokenBudgetPreset as TokenPresetId)
         if (typeof d.trackSynthTokens === 'number') setTrackSynthTokens(d.trackSynthTokens)
         if (typeof d.finalSynthTokens === 'number') setFinalSynthTokens(d.finalSynthTokens)
@@ -270,11 +279,13 @@ export default function NewBriefPage() {
       timeframe,
       reportStyle,
       frameworkId,
+      frameworkIds,
+      consensusMode,
       tokenBudgetPreset,
       trackSynthTokens,
       finalSynthTokens,
     }))
-  }, [topic, objective, focus, source, recurring, depth, timeframe, reportStyle, frameworkId, tokenBudgetPreset, trackSynthTokens, finalSynthTokens])
+  }, [topic, objective, focus, source, recurring, depth, timeframe, reportStyle, frameworkId, frameworkIds, consensusMode, tokenBudgetPreset, trackSynthTokens, finalSynthTokens])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -305,7 +316,17 @@ export default function NewBriefPage() {
     setFocus(preset.focus)
     setTimeframe(preset.timeframe)
     setReportStyle(preset.reportStyle)
+    setConsensusMode(false)
+    setFrameworkIds([])
     if (preset.frameworkId) setFrameworkId(preset.frameworkId)
+  }
+
+  function toggleConsensusFramework(id: string) {
+    setFrameworkIds((current) => {
+      if (current.includes(id)) return current.filter((value) => value !== id)
+      if (current.length >= 3) return current
+      return [...current, id]
+    })
   }
 
   function appendSuggestion(current: string, value: string) {
@@ -317,6 +338,10 @@ export default function NewBriefPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!topic.trim()) { setError('Topic is required.'); return }
+    if (consensusMode && frameworkIds.length < 2) {
+      setError('Pick at least 2 frameworks for consensus mode.')
+      return
+    }
     setError('')
     setLoading(true)
 
@@ -342,7 +367,8 @@ export default function NewBriefPage() {
           depth,
           timeframe,
           reportStyle,
-          frameworkId: frameworkId ?? undefined,
+          frameworkId: !consensusMode ? frameworkId ?? undefined : undefined,
+          frameworkIds: consensusMode && frameworkIds.length >= 2 ? frameworkIds : undefined,
           tokenBudget: depth === 'deep' && tokenBudgetPreset !== 'standard'
             ? { trackSynthTokens, finalSynthTokens }
             : undefined,
@@ -706,30 +732,66 @@ export default function NewBriefPage() {
 
             {/* Step 04: Research Framework — first-class step, not buried in Advanced */}
             <div className="border border-[#262626] bg-[#111111] overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setFwOpen((o) => !o)}
-                className="w-full flex items-start gap-3 px-5 py-5 sm:px-6 sm:py-6 cursor-pointer hover:bg-white/5 transition-colors text-left"
-              >
-                <div className="w-8 h-8 border border-[#262626] flex items-center justify-center text-[11px] text-[#f97316] shrink-0"
-                     style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>
-                  04
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="text-[14px] font-semibold text-[#e5e5e5] mb-1">Apply a research framework</div>
-                    <span className="text-[11px] text-[#f97316] shrink-0"
-                          style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                      {selectedFramework ? selectedFramework.name : fwOpen ? 'Close' : 'Browse'}
-                    </span>
+              <div className="px-5 py-5 sm:px-6 sm:py-6">
+                <button
+                  type="button"
+                  onClick={() => setFwOpen((o) => !o)}
+                  className="w-full flex items-start gap-3 cursor-pointer hover:bg-white/5 transition-colors text-left -m-2 p-2"
+                >
+                  <div className="w-8 h-8 border border-[#262626] flex items-center justify-center text-[11px] text-[#f97316] shrink-0"
+                       style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>
+                    04
                   </div>
-                  <p className="text-[12px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                    {selectedFramework
-                      ? selectedFramework.description
-                      : 'Optional. Structure your report around JTBD, SWOT, Problem-Solution Fit, RICE, and 20+ more lenses.'}
-                  </p>
-                </div>
-              </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="text-[14px] font-semibold text-[#e5e5e5] mb-1">Apply a research framework</div>
+                      <span className="text-[11px] text-[#f97316] shrink-0"
+                            style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                        {selectedFramework ? selectedFramework.name : fwOpen ? 'Close' : 'Browse'}
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                      {consensusMode && selectedConsensusFrameworks.length > 0
+                        ? `Comparing ${selectedConsensusFrameworks.map((framework) => framework.name).join(', ')}.`
+                        : selectedFramework
+                        ? selectedFramework.description
+                        : 'Optional. Structure your report around JTBD, SWOT, Problem-Solution Fit, RICE, and 20+ more lenses.'}
+                    </p>
+                  </div>
+                </button>
+
+                {depth === 'deep' && (
+                  <div className="mt-5 flex items-center justify-between gap-4 border border-[#262626] bg-[#0a0a0a] px-3 py-2">
+                    <div>
+                      <div className="text-[11px] text-[#e5e5e5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                        Framework consensus mode
+                      </div>
+                      <div className="text-[10px] text-[#737373]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                        Pick 2-3 frameworks and Beacon will compare them instead of using one lens.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={consensusMode}
+                      onClick={() => {
+                        setConsensusMode((value) => !value)
+                        setFrameworkIds((current) => current.slice(0, 3))
+                      }}
+                      className="cursor-pointer shrink-0 relative w-11 h-6 rounded-full transition-colors"
+                      style={{
+                        background: consensusMode ? 'rgba(249,115,22,0.24)' : 'rgba(255,255,255,0.08)',
+                        border: `1px solid ${consensusMode ? 'rgba(249,115,22,0.7)' : 'rgba(255,255,255,0.1)'}`,
+                      }}
+                    >
+                      <span
+                        className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform"
+                        style={{ transform: consensusMode ? 'translateX(20px)' : 'translateX(1px)' }}
+                      />
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {fwOpen && (
                 <div className="border-t border-[#262626]">
@@ -748,15 +810,15 @@ export default function NewBriefPage() {
                       {!fwSearch.trim() && (
                         <button
                           type="button"
-                          onClick={() => { setFrameworkId(null); setFwOpen(false) }}
+                          onClick={() => { setFrameworkId(null); setFrameworkIds([]); setFwOpen(false) }}
                           className={`w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-white/5 ${
-                            frameworkId === null ? 'bg-white/5' : ''
+                            !consensusMode && frameworkId === null ? 'bg-white/5' : ''
                           }`}
                         >
                           <span className={`w-2 h-2 rounded-full border shrink-0 flex items-center justify-center ${
-                            frameworkId === null ? 'border-cyan-400 bg-cyan-400' : 'border-white/20 bg-transparent'
+                            !consensusMode && frameworkId === null ? 'border-cyan-400 bg-cyan-400' : 'border-white/20 bg-transparent'
                           }`}>
-                            {frameworkId === null && <span className="w-1 h-1 rounded-full bg-black block" />}
+                            {!consensusMode && frameworkId === null && <span className="w-1 h-1 rounded-full bg-black block" />}
                           </span>
                           <div>
                             <p className="text-[12px] text-[#e5e5e5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
@@ -779,8 +841,16 @@ export default function NewBriefPage() {
                         <FrameworkRow
                           key={fw.id}
                           fw={fw}
-                          selected={frameworkId === fw.id}
-                          onSelect={() => { setFrameworkId(fw.id); setFwSearch(''); setFwOpen(false) }}
+                          selected={consensusMode ? frameworkIds.includes(fw.id) : frameworkId === fw.id}
+                          onSelect={() => {
+                            if (consensusMode) {
+                              toggleConsensusFramework(fw.id)
+                              return
+                            }
+                            setFrameworkId(fw.id)
+                            setFwSearch('')
+                            setFwOpen(false)
+                          }}
                         />
                       ))}
 
@@ -794,13 +864,46 @@ export default function NewBriefPage() {
                             <FrameworkRow
                               key={fw.id}
                               fw={fw}
-                              selected={frameworkId === fw.id}
-                              onSelect={() => { setFrameworkId(fw.id); setFwOpen(false) }}
+                              selected={consensusMode ? frameworkIds.includes(fw.id) : frameworkId === fw.id}
+                              onSelect={() => {
+                                if (consensusMode) {
+                                  toggleConsensusFramework(fw.id)
+                                  return
+                                }
+                                setFrameworkId(fw.id)
+                                setFwOpen(false)
+                              }}
                             />
                           ))}
                         </div>
                       ))}
                     </div>
+                    {consensusMode && (
+                      <div className="px-4 py-3 border-t border-[#262626] bg-[#0f0f0f]">
+                        <div className="text-[10px] uppercase tracking-[0.16em] text-[#737373] mb-2"
+                             style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                          Selected for comparison
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedConsensusFrameworks.length === 0 && (
+                            <span className="text-[11px] text-[#4a4a4a]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                              Pick 2-3 frameworks.
+                            </span>
+                          )}
+                          {selectedConsensusFrameworks.map((framework) => (
+                            <button
+                              key={framework.id}
+                              type="button"
+                              onClick={() => toggleConsensusFramework(framework.id)}
+                              className="border border-cyan-400/30 bg-cyan-400/10 px-2 py-1 text-[10px] text-cyan-300"
+                              style={{ fontFamily: 'var(--font-space-grotesk)' }}
+                            >
+                              {framework.name} ×
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
