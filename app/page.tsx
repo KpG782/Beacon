@@ -1,5 +1,7 @@
 import Link from 'next/link'
+import { Search, Database, Layers, CheckCircle2, Bot, Zap, ArrowRight, Download, LayoutDashboard, Share2, Code } from 'lucide-react'
 import ArchitectureScene from '@/components/landing/architecture-scene'
+import PublicDocsSearch from '@/components/landing/public-docs-search'
 import { FRAMEWORKS } from '@/lib/frameworks'
 
 const NAV_ITEMS = [
@@ -39,18 +41,21 @@ const USE_CASES = [
 const WORKFLOW_STEPS = [
   {
     num: '01',
+    icon: <Search className="h-4 w-4 text-cyan-300" />,
     title: 'Define the question',
     body: 'Set the topic, objective, and depth. Beacon starts by loading prior memory for the same topic before planning new searches.',
     accent: false,
   },
   {
     num: '02',
+    icon: <Layers className="h-4 w-4 text-cyan-300" />,
     title: 'Choose the research method',
     body: 'Frameworks like JTBD, RICE, SWOT, or Porter change both the search plan and the final synthesis, so Beacon investigates with a clear lens instead of generic summarization.',
     accent: true,
   },
   {
     num: '03',
+    icon: <Database className="h-4 w-4 text-cyan-300" />,
     title: 'Search, validate, and save',
     body: 'Parallel search agents collect evidence, a validator checks contradictions, and the final cited report is written back into durable memory for the next run.',
     accent: false,
@@ -121,6 +126,7 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <PublicDocsSearch />
             <Link
               href="/docs"
               className="hidden border border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-[#c7d4d6] transition-colors hover:bg-white/5 sm:inline-flex"
@@ -192,12 +198,15 @@ export default function LandingPage() {
             {/* Hero proof points */}
             <div className="grid gap-3">
               {[
-                ['Built for repeated research', 'Use Beacon when a topic needs a baseline now and a smarter rerun later.'],
-                ['Frameworks change the investigation', `${FRAMEWORKS.length} research lenses reshape both search planning and final synthesis.`],
-              ].map(([title, body]) => (
-                <div key={title} className="border border-white/8 bg-black/25 p-5">
-                  <div className="text-[15px] text-[#f3f7f8]">{title}</div>
-                  <p className="mt-2 text-[12px] leading-6 text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                ['Built for repeated research', 'Use Beacon when a topic needs a baseline now and a smarter rerun later.', <Database key="1" size={16} className="text-cyan-400" />],
+                ['Frameworks change the investigation', `${FRAMEWORKS.length} research lenses reshape both search planning and final synthesis.`, <Layers key="2" size={16} className="text-cyan-400" />],
+              ].map(([title, body, icon]) => (
+                <div key={title as string} className="border border-white/8 bg-black/25 p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    {icon}
+                    <div className="text-[15px] text-[#f3f7f8]">{title}</div>
+                  </div>
+                  <p className="text-[12px] leading-6 text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
                     {body}
                   </p>
                 </div>
@@ -269,8 +278,8 @@ export default function LandingPage() {
                       : 'border-white/8 bg-black/25'
                   }`}
                 >
-                  {/* Step number */}
-                  <div className="flex items-center gap-2">
+                  {/* Step number and icon */}
+                  <div className="flex items-center gap-3">
                     <div
                       className={`flex h-8 w-8 items-center justify-center text-[11px] font-bold border ${
                         step.accent
@@ -281,6 +290,7 @@ export default function LandingPage() {
                     >
                       {step.num}
                     </div>
+                    {step.icon}
                     {/* Arrow connector between steps */}
                     {i < WORKFLOW_STEPS.length - 1 && (
                       <span className="absolute right-[-10px] top-[26px] z-10 hidden text-[#849495] text-[14px] lg:block">›</span>
@@ -361,6 +371,54 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── Agents & Skills ── */}
+        <section className="mx-auto max-w-7xl px-6 pb-20">
+          <div className="mb-8">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 mb-2" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              Extensibility
+            </div>
+            <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[#f3f7f8]">
+              Agents and Skills.
+            </h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="border border-white/8 bg-black/25 p-6 transition-colors hover:border-cyan-400/20 hover:bg-cyan-400/[0.03]">
+              <div className="flex items-center gap-3 mb-4">
+                <Bot className="text-cyan-400" size={24} />
+                <div className="text-[16px] text-[#eef3f4]">Multi-Agent Architecture</div>
+              </div>
+              <p className="text-[13px] leading-7 text-[#8ea1a5] mb-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                Beacon relies on a distributed multi-agent system to handle parallel research tasks. Specialized agents for searching, validating, and synthesizing operate concurrently, guided by the central orchestration engine.
+              </p>
+              <div className="flex flex-wrap items-center gap-4">
+                <Link href="/docs/architecture" className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-cyan-300 hover:text-cyan-200" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Open architecture docs <ArrowRight size={12} />
+                </Link>
+                <Link href="/api/public-download/agents" className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#9ed8ff] hover:text-cyan-200" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Download AGENTS.md <Download size={12} />
+                </Link>
+              </div>
+            </div>
+            <div className="border border-white/8 bg-black/25 p-6 transition-colors hover:border-cyan-400/20 hover:bg-cyan-400/[0.03]">
+              <div className="flex items-center gap-3 mb-4">
+                <Zap className="text-cyan-400" size={24} />
+                <div className="text-[16px] text-[#eef3f4]">Pluggable Skills</div>
+              </div>
+              <p className="text-[13px] leading-7 text-[#8ea1a5] mb-4" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                Skills extend Beacon&apos;s core capabilities, allowing it to adapt to specific frameworks, external tools, or custom validation rules. Skills are implemented as declarative Markdown modules.
+              </p>
+              <div className="flex flex-wrap items-center gap-4">
+                <Link href="/docs/frameworks" className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-cyan-300 hover:text-cyan-200" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Open framework docs <ArrowRight size={12} />
+                </Link>
+                <Link href="/api/public-download/skill" className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.2em] text-[#9ed8ff] hover:text-cyan-200" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                  Download SKILL.md <Download size={12} />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── Hackathon Validation ── */}
         <section className="mx-auto max-w-7xl px-6 pb-20">
           <div className="border border-cyan-400/15 bg-cyan-400/[0.03] p-8">
@@ -407,7 +465,7 @@ export default function LandingPage() {
                     'Is the timing right based on recent market movement?',
                   ].map((q) => (
                     <div key={q} className="flex items-start gap-2 text-[12px] text-[#9db0b3]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                      <span className="text-cyan-400 mt-0.5 shrink-0">›</span>
+                      <CheckCircle2 className="text-cyan-400 mt-0.5 shrink-0" size={14} />
                       {q}
                     </div>
                   ))}
@@ -428,18 +486,19 @@ export default function LandingPage() {
             </h2>
           </div>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {SURFACES.map(([title, href, body]) => (
+            {SURFACES.map(([title, href, body, icon]) => (
               <Link
-                key={title}
-                href={href}
+                key={title as string}
+                href={href as string}
                 className="border border-white/8 bg-black/25 p-5 transition-colors hover:border-cyan-400/20 hover:bg-cyan-400/[0.03]"
               >
+                {icon}
                 <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300 mb-3" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
                   Surface
                 </div>
-                <div className="text-[17px] text-[#eef3f4] mb-2">{title}</div>
+                <div className="text-[17px] text-[#eef3f4] mb-2">{title as string}</div>
                 <p className="text-[12px] leading-6 text-[#92a5a8]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
-                  {body}
+                  {body as string}
                 </p>
               </Link>
             ))}

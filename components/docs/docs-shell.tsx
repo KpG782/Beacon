@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 
 export interface DocsNavItem {
   href: string
@@ -29,6 +30,42 @@ export function DocsShell({
   actions?: React.ReactNode
   children: React.ReactNode
 }) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<Array<{ href: string; title: string; snippet: string }>>([])
+  const [searching, setSearching] = useState(false)
+
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) {
+      setResults([])
+      setSearching(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      try {
+        setSearching(true)
+        const res = await fetch(`/api/public-search?q=${encodeURIComponent(q)}`, { signal: controller.signal })
+        if (!res.ok) {
+          setResults([])
+          return
+        }
+        const body = await res.json()
+        setResults(Array.isArray(body.results) ? body.results : [])
+      } catch {
+        if (!controller.signal.aborted) setResults([])
+      } finally {
+        if (!controller.signal.aborted) setSearching(false)
+      }
+    }, 180)
+
+    return () => {
+      controller.abort()
+      window.clearTimeout(timer)
+    }
+  }, [query])
+
   return (
     <div className="min-h-screen bg-[#0b0d10] text-[#e5e2e3] overflow-clip">
       <div className="absolute inset-0 pointer-events-none landing-noise opacity-35" />
@@ -76,6 +113,65 @@ export function DocsShell({
             {description}
           </p>
           {actions ? <div className="mt-6 flex flex-wrap gap-3">{actions}</div> : null}
+          <div className="mt-6 max-w-3xl">
+            <div className="mb-2 text-[10px] uppercase tracking-[0.2em] text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+              Search docs, support, and public pages
+            </div>
+            <div className="relative">
+              <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-[#849495]">
+                search
+              </span>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search public docs and support..."
+                className="w-full border border-white/10 bg-black/35 py-2.5 pl-9 pr-10 text-[12px] text-[#e5e2e3] outline-none placeholder:text-[#556467] focus:border-cyan-400/35"
+                style={{ fontFamily: 'var(--font-space-grotesk)' }}
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#849495] transition-colors hover:text-[#e5e2e3]"
+                  aria-label="Clear search"
+                >
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              )}
+            </div>
+            {(query.trim().length >= 2 || searching) && (
+              <div className="mt-2 border border-white/8 bg-black/40">
+                {searching ? (
+                  <div className="px-3 py-2 text-[11px] text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    Searching…
+                  </div>
+                ) : results.length === 0 ? (
+                  <div className="px-3 py-2 text-[11px] text-[#849495]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                    No matches found.
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    {results.map((result) => (
+                      <Link
+                        key={`${result.href}-${result.title}`}
+                        href={result.href}
+                        className="border-b border-white/5 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-white/[0.03]"
+                      >
+                        <div className="text-[12px] text-[#e5e2e3]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                          {result.title}
+                        </div>
+                        {result.snippet && (
+                          <div className="text-[10px] text-[#8ea1a5]" style={{ fontFamily: 'var(--font-space-grotesk)' }}>
+                            {result.snippet}
+                          </div>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className={`mt-8 grid gap-6 ${tocItems && tocItems.length > 0 ? 'lg:grid-cols-[240px_minmax(0,1fr)_200px]' : 'lg:grid-cols-[280px_minmax(0,1fr)]'}`}>
@@ -115,11 +211,6 @@ export function DocsShell({
                   <a
                     key={item.id}
                     href={`#${item.id}`}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      document.getElementById(item.id)?.scrollIntoView({ behavior: 'smooth' })
-                      window.history.pushState(null, '', `#${item.id}`)
-                    }}
                     className="text-[12px] text-[#92a5a8] transition-colors hover:text-cyan-300"
                     style={{ fontFamily: 'var(--font-space-grotesk)' }}
                   >

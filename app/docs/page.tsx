@@ -12,6 +12,7 @@ export default function DocsPage() {
       tocItems={[
         { id: 'what-beacon-is', label: 'Overview' },
         { id: 'documentation-map', label: 'Where To Start' },
+        { id: 'downloadable-references', label: 'Downloads' },
         { id: 'try-beacon-via-http', label: 'API Example' },
         { id: 'why-reports-can-feel-short', label: 'Report Depth' },
         { id: `${FRAMEWORKS.length}-framework-guided-research-modes`, label: 'Frameworks' },
@@ -60,6 +61,17 @@ export default function DocsPage() {
           <DocsCard href="/docs/deployment" title="Deployment" body="Configure env vars and workflow runtime expectations for local or hosted deployment." />
           <DocsCard href="/docs/architecture" title="Architecture" body="Read how context, memory, harness, models, and workflow runtime fit together." />
           <DocsCard href="/docs/roadmap" title="Roadmap" body="See what is shipped today versus what is still planned or intentionally missing." />
+        </div>
+      </DocsSection>
+
+      <DocsSection id="downloadable-references" eyebrow="Downloads" title="Downloadable developer references">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <DocsCard href="/api/public-download/agents" title="AGENTS.md" body="Core operating rules and project guardrails for Beacon agents." />
+          <DocsCard href="/api/public-download/skill" title="SKILL.md" body="Beacon skill spec used for skills-based orchestration and behavior." />
+          <DocsCard href="/api/public-download/claude" title="CLAUDE.md" body="Project-level guidance and implementation context documentation." />
+          <DocsCard href="/api/public-download/architecture" title="orchestration-architecture.md" body="Full context/memory/harness architecture mapping." />
+          <DocsCard href="/api/public-download/context-engineering" title="context-engineering.md" body="Per-request context strategy and optimization notes." />
+          <DocsCard href="/api/public-download/memory-engineering" title="memory-engineering.md" body="Cross-session memory design and persistence patterns." />
         </div>
       </DocsSection>
 

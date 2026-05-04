@@ -1,20 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { mergeUrls, filterSeenUrls, buildMemoryContext, memoryKey } from '@/lib/memory'
-import type { AgentMemory } from '@/lib/types'
+import { memoryKey, filterSeenUrls, mergeUrls, buildMemoryContext } from '../lib/memory'
+import type { AgentMemory } from '../lib/types'
 
 describe('memoryKey', () => {
   it('slugifies a plain topic', () => {
-    expect(memoryKey('AI coding agents')).toBe('beacon:memory:ai-coding-agents')
+    expect(memoryKey('AI coding agents')).toBe('beacon:user:__system__:memory:ai-coding-agents')
   })
 
   it('strips special characters', () => {
-    expect(memoryKey('GPT-4o & Claude 3.5!')).toBe('beacon:memory:gpt4o-claude-35')
+    expect(memoryKey('GPT-4o & Claude 3.5!')).toBe('beacon:user:__system__:memory:gpt4o-claude-35')
   })
 
-  it('truncates at 80 chars', () => {
+  it('truncates at 80 chars for the topic part', () => {
     const long = 'a '.repeat(60).trim()
     const key = memoryKey(long)
-    expect(key.length).toBeLessThanOrEqual('beacon:memory:'.length + 80)
+    expect(key.length).toBeLessThanOrEqual(30 + 80) // beacon:user:__system__:memory: (30) + 80 chars
   })
 })
 
